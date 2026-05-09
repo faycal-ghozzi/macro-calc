@@ -1,4 +1,19 @@
-import { Profile, MacroTargets } from '../types'
+import { Profile, MacroTargets, MeasurementUnit } from '../types'
+
+const UNIT_TO_G: Record<MeasurementUnit, number> = {
+  g: 1,
+  ml: 1,
+  cl: 10,
+  L: 1000,
+  tbsp: 15,
+  tsp: 5,
+  piece: 1, // multiplied by piece_weight_g separately
+}
+
+export function convertToGrams(amount: number, unit: MeasurementUnit, piece_weight_g?: number): number {
+  if (unit === 'piece') return amount * (piece_weight_g ?? 100)
+  return amount * UNIT_TO_G[unit]
+}
 
 export function calculateMacroTargets(profile: Profile): MacroTargets | null {
   if (

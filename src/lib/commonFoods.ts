@@ -21,8 +21,8 @@ export const COMMON_FOODS: FoodItem[] = [
   { name: 'Sardines (canned in oil)', calories_100g: 208, protein_100g: 25, carbs_100g: 0, fat_100g: 11, fiber_100g: 0, source: 'common', category: 'Fish' },
 
   // Eggs & Dairy
-  { name: 'Whole Egg', calories_100g: 155, protein_100g: 13, carbs_100g: 1.1, fat_100g: 11, fiber_100g: 0, source: 'common', category: 'Eggs & Dairy' },
-  { name: 'Egg White', calories_100g: 52, protein_100g: 11, carbs_100g: 0.7, fat_100g: 0.2, fiber_100g: 0, source: 'common', category: 'Eggs & Dairy' },
+  { name: 'Whole Egg', calories_100g: 155, protein_100g: 13, carbs_100g: 1.1, fat_100g: 11, fiber_100g: 0, source: 'common', category: 'Eggs & Dairy', piece_weight_g: 55 },
+  { name: 'Egg White', calories_100g: 52, protein_100g: 11, carbs_100g: 0.7, fat_100g: 0.2, fiber_100g: 0, source: 'common', category: 'Eggs & Dairy', piece_weight_g: 33 },
   { name: 'Whole Milk', calories_100g: 61, protein_100g: 3.2, carbs_100g: 4.8, fat_100g: 3.3, fiber_100g: 0, source: 'common', category: 'Eggs & Dairy' },
   { name: 'Skim Milk', calories_100g: 34, protein_100g: 3.4, carbs_100g: 5, fat_100g: 0.1, fiber_100g: 0, source: 'common', category: 'Eggs & Dairy' },
   { name: 'Greek Yogurt 0%', calories_100g: 59, protein_100g: 10, carbs_100g: 3.6, fat_100g: 0.4, fiber_100g: 0, source: 'common', category: 'Eggs & Dairy' },
@@ -52,14 +52,14 @@ export const COMMON_FOODS: FoodItem[] = [
   { name: 'Tofu (firm)', calories_100g: 76, protein_100g: 8, carbs_100g: 1.9, fat_100g: 4.8, fiber_100g: 0.3, source: 'common', category: 'Legumes' },
 
   // Fruits
-  { name: 'Banana', calories_100g: 89, protein_100g: 1.1, carbs_100g: 23, fat_100g: 0.3, fiber_100g: 2.6, sugar_100g: 12, source: 'common', category: 'Fruit' },
-  { name: 'Apple', calories_100g: 52, protein_100g: 0.3, carbs_100g: 14, fat_100g: 0.2, fiber_100g: 2.4, sugar_100g: 10, source: 'common', category: 'Fruit' },
-  { name: 'Orange', calories_100g: 47, protein_100g: 0.9, carbs_100g: 12, fat_100g: 0.1, fiber_100g: 2.4, sugar_100g: 9, source: 'common', category: 'Fruit' },
-  { name: 'Strawberries', calories_100g: 32, protein_100g: 0.7, carbs_100g: 7.7, fat_100g: 0.3, fiber_100g: 2, sugar_100g: 4.9, source: 'common', category: 'Fruit' },
-  { name: 'Blueberries', calories_100g: 57, protein_100g: 0.7, carbs_100g: 14, fat_100g: 0.3, fiber_100g: 2.4, sugar_100g: 10, source: 'common', category: 'Fruit' },
-  { name: 'Grapes', calories_100g: 69, protein_100g: 0.7, carbs_100g: 18, fat_100g: 0.2, fiber_100g: 0.9, sugar_100g: 15, source: 'common', category: 'Fruit' },
-  { name: 'Mango', calories_100g: 60, protein_100g: 0.8, carbs_100g: 15, fat_100g: 0.4, fiber_100g: 1.6, sugar_100g: 14, source: 'common', category: 'Fruit' },
-  { name: 'Avocado', calories_100g: 160, protein_100g: 2, carbs_100g: 9, fat_100g: 15, fiber_100g: 6.7, sugar_100g: 0.7, source: 'common', category: 'Fruit' },
+  { name: 'Banana', calories_100g: 89, protein_100g: 1.1, carbs_100g: 23, fat_100g: 0.3, fiber_100g: 2.6, sugar_100g: 12, source: 'common', category: 'Fruit', piece_weight_g: 120 },
+  { name: 'Apple', calories_100g: 52, protein_100g: 0.3, carbs_100g: 14, fat_100g: 0.2, fiber_100g: 2.4, sugar_100g: 10, source: 'common', category: 'Fruit', piece_weight_g: 182 },
+  { name: 'Orange', calories_100g: 47, protein_100g: 0.9, carbs_100g: 12, fat_100g: 0.1, fiber_100g: 2.4, sugar_100g: 9, source: 'common', category: 'Fruit', piece_weight_g: 130 },
+  { name: 'Strawberries', calories_100g: 32, protein_100g: 0.7, carbs_100g: 7.7, fat_100g: 0.3, fiber_100g: 2, sugar_100g: 4.9, source: 'common', category: 'Fruit', piece_weight_g: 12 },
+  { name: 'Blueberries', calories_100g: 57, protein_100g: 0.7, carbs_100g: 14, fat_100g: 0.3, fiber_100g: 2.4, sugar_100g: 10, source: 'common', category: 'Fruit', piece_weight_g: 2 },
+  { name: 'Grapes', calories_100g: 69, protein_100g: 0.7, carbs_100g: 18, fat_100g: 0.2, fiber_100g: 0.9, sugar_100g: 15, source: 'common', category: 'Fruit', piece_weight_g: 5 },
+  { name: 'Mango', calories_100g: 60, protein_100g: 0.8, carbs_100g: 15, fat_100g: 0.4, fiber_100g: 1.6, sugar_100g: 14, source: 'common', category: 'Fruit', piece_weight_g: 200 },
+  { name: 'Avocado', calories_100g: 160, protein_100g: 2, carbs_100g: 9, fat_100g: 15, fiber_100g: 6.7, sugar_100g: 0.7, source: 'common', category: 'Fruit', piece_weight_g: 150 },
   { name: 'Watermelon', calories_100g: 30, protein_100g: 0.6, carbs_100g: 7.6, fat_100g: 0.2, fiber_100g: 0.4, sugar_100g: 6.2, source: 'common', category: 'Fruit' },
   { name: 'Pineapple', calories_100g: 50, protein_100g: 0.5, carbs_100g: 13, fat_100g: 0.1, fiber_100g: 1.4, sugar_100g: 10, source: 'common', category: 'Fruit' },
 
@@ -79,10 +79,10 @@ export const COMMON_FOODS: FoodItem[] = [
   { name: 'Kale', calories_100g: 49, protein_100g: 4.3, carbs_100g: 9, fat_100g: 0.9, fiber_100g: 3.6, source: 'common', category: 'Vegetable' },
 
   // Nuts & Seeds
-  { name: 'Almonds', calories_100g: 579, protein_100g: 21, carbs_100g: 22, fat_100g: 50, fiber_100g: 12, source: 'common', category: 'Nuts & Seeds' },
-  { name: 'Walnuts', calories_100g: 654, protein_100g: 15, carbs_100g: 14, fat_100g: 65, fiber_100g: 6.7, source: 'common', category: 'Nuts & Seeds' },
+  { name: 'Almonds', calories_100g: 579, protein_100g: 21, carbs_100g: 22, fat_100g: 50, fiber_100g: 12, source: 'common', category: 'Nuts & Seeds', piece_weight_g: 1.2 },
+  { name: 'Walnuts', calories_100g: 654, protein_100g: 15, carbs_100g: 14, fat_100g: 65, fiber_100g: 6.7, source: 'common', category: 'Nuts & Seeds', piece_weight_g: 4 },
   { name: 'Peanut Butter', calories_100g: 588, protein_100g: 25, carbs_100g: 20, fat_100g: 50, fiber_100g: 6, source: 'common', category: 'Nuts & Seeds' },
-  { name: 'Cashews', calories_100g: 553, protein_100g: 18, carbs_100g: 30, fat_100g: 44, fiber_100g: 3.3, source: 'common', category: 'Nuts & Seeds' },
+  { name: 'Cashews', calories_100g: 553, protein_100g: 18, carbs_100g: 30, fat_100g: 44, fiber_100g: 3.3, source: 'common', category: 'Nuts & Seeds', piece_weight_g: 2 },
   { name: 'Chia Seeds', calories_100g: 486, protein_100g: 17, carbs_100g: 42, fat_100g: 31, fiber_100g: 34, source: 'common', category: 'Nuts & Seeds' },
   { name: 'Sunflower Seeds', calories_100g: 584, protein_100g: 21, carbs_100g: 20, fat_100g: 51, fiber_100g: 8.6, source: 'common', category: 'Nuts & Seeds' },
 
@@ -103,7 +103,7 @@ export function searchCommonFoods(query: string): FoodItem[] {
   return COMMON_FOODS.filter(
     (f) =>
       f.name.toLowerCase().includes(q) ||
-      (f.category && f.category.toLowerCase().includes(q))
+      f.category?.toLowerCase().includes(q)
   )
 }
 

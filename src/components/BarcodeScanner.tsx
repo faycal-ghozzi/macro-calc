@@ -6,7 +6,7 @@ interface BarcodeScannerProps {
   onClose: () => void
 }
 
-export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
+export default function BarcodeScanner({ onScan, onClose }: Readonly<BarcodeScannerProps>) {
   const [error, setError] = useState<string | null>(null)
   const scannerRef = useRef<unknown>(null)
   const mountedRef = useRef(false)
@@ -38,7 +38,11 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
 
         scanner!.render(
           (decodedText) => {
-            onScan(decodedText)
+            const digits = decodedText.replace(/\D/g, '')
+            // Accept EAN-8 (8), UPC-E (8), UPC-A (12), EAN-13 (13)
+            if (digits.length === 8 || digits.length === 12 || digits.length === 13) {
+              onScan(digits)
+            }
           },
           () => {
             // silently ignore frame errors

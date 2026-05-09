@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react'
-import { LogOut, Save, Loader2, Target, Flame } from 'lucide-react'
+import { LogOut, Save, Loader2, Target, Flame, Mail, Lock, Check } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../contexts/AuthContext'
@@ -207,19 +208,139 @@ export default function Profile() {
           {saved ? 'Saved!' : 'Save Profile'}
         </button>
 
-        {/* Account */}
-        <div className="bg-gray-900 rounded-3xl p-4 space-y-3">
-          <p className="text-xs text-gray-600">{user?.email}</p>
-          <button
-            type="button"
-            onClick={signOut}
-            className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 py-2 text-sm font-medium transition-colors"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-        </div>
+        {/* Account / Security */}
+        <SecuritySection email={user?.email ?? ''} onSignOut={signOut} />
       </form>
     </Layout>
+  )
+}
+
+function SecuritySection({ email, onSignOut }: Readonly<{ email: string; onSignOut: () => void }>) {
+  const [newEmail, setNewEmail] = useState('')
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [emailStatus, setEmailStatus] = useState<string | null>(null)
+  const [pwStatus, setPwStatus] = useState<string | null>(null)
+  const [emailLoading, setEmailLoading] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
+
+  async function handleEmailUpdate(e: FormEvent) {
+    e.preventDefault()
+    if (!newEmail.trim()) return
+    setEmailLoading(true)
+    setEmailStatus(null)
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
+    setEmailLoading(false)
+    setEmailStatus(error ? error.message : 'Confirmation sent to new email address.')
+    if (!error) setNewEmail('')
+  }
+
+  async function handlePasswordUpdate(e: FormEvent) {
+    e.preventDefault()
+    if (newPw !== confirmPw) { setPwStatus('Passwords do not match.'); return }
+    if (newPw.length < 8) { setPwStatus('Password must be at least 8 characters.'); return }
+    setPwLoading(true)
+    setPwStatus(null)
+    // Re-authenticate first so the update is secure
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: currentPw })
+    if (signInError) { setPwLoading(false); setPwStatus('Current password is incorrect.'); return }
+    const { error } = await supabase.auth.updateUser({ password: newPw })
+    setPwLoading(false)
+    setPwStatus(error ? error.message : 'Password updated successfully.')
+    if (!error) { setCurrentPw(''); setNewPw(''); setConfirmPw('') }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Update email */}
+      <div className="bg-gray-900 rounded-3xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Mail size={15} className="text-gray-500" />
+          <p className="text-sm font-semibold text-gray-400">Update Email</p>
+        </div>
+        <p className="text-xs text-gray-600">Current: {email}</p>
+        <form onSubmit={handleEmailUpdate} className="space-y-2">
+          <input
+            type="email"
+            placeholder="New email address"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
+          />
+          {emailStatus && (
+            <p className={`text-xs px-1 ${emailStatus.includes('sent') || emailStatus.includes('successfully') ? 'text-emerald-400' : 'text-red-400'}`}>
+              {emailStatus}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={emailLoading || !newEmail.trim()}
+            className="w-full bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white font-medium rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 transition-colors"
+          >
+            {emailLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            Update Email
+          </button>
+        </form>
+      </div>
+
+      {/* Update password */}
+      <div className="bg-gray-900 rounded-3xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Lock size={15} className="text-gray-500" />
+          <p className="text-sm font-semibold text-gray-400">Change Password</p>
+        </div>
+        <form onSubmit={handlePasswordUpdate} className="space-y-2">
+          <input
+            type="password"
+            placeholder="Current password"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
+            className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
+          />
+          <input
+            type="password"
+            placeholder="New password (8+ chars)"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
+          />
+          <input
+            type="password"
+            placeholder="Confirm new password"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 transition-colors ${
+              confirmPw && confirmPw !== newPw ? 'ring-2 ring-red-500/50' : 'focus:ring-emerald-500/50'
+            }`}
+          />
+          {pwStatus && (
+            <p className={`text-xs px-1 ${pwStatus.includes('successfully') ? 'text-emerald-400' : 'text-red-400'}`}>
+              {pwStatus}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={pwLoading || !currentPw || !newPw || newPw !== confirmPw}
+            className="w-full bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white font-medium rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 transition-colors"
+          >
+            {pwLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            Update Password
+          </button>
+        </form>
+      </div>
+
+      {/* Sign out */}
+      <div className="bg-gray-900 rounded-3xl p-4">
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 py-2 text-sm font-medium transition-colors"
+        >
+          <LogOut size={16} />
+          Sign Out
+        </button>
+      </div>
+    </div>
   )
 }

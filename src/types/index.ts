@@ -37,6 +37,8 @@ export interface FoodLog {
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
+export type MeasurementUnit = 'g' | 'ml' | 'cl' | 'L' | 'tbsp' | 'tsp' | 'piece'
+
 export interface FoodItem {
   name: string
   barcode?: string
@@ -48,6 +50,7 @@ export interface FoodItem {
   sugar_100g?: number
   source: 'openfoodfacts' | 'common'
   category?: string
+  piece_weight_g?: number
 }
 
 export interface Meal {
