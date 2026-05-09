@@ -72,42 +72,45 @@ export default function Profile() {
           />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Height (cm)</label>
+              <label htmlFor="profile-height" className="text-xs text-gray-500 mb-1 block">Height (cm)</label>
               <input
+                id="profile-height"
                 type="number"
                 inputMode="numeric"
                 placeholder="175"
                 value={form.height_cm || ''}
-                onChange={(e) => set('height_cm', parseFloat(e.target.value) || null as unknown as number)}
+                onChange={(e) => set('height_cm', Number.parseFloat(e.target.value) || null as unknown as number)}
                 className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Birth Year</label>
+              <label htmlFor="profile-birthyear" className="text-xs text-gray-500 mb-1 block">Birth Year</label>
               <input
+                id="profile-birthyear"
                 type="number"
                 inputMode="numeric"
                 placeholder="1990"
                 value={form.birth_year || ''}
-                onChange={(e) => set('birth_year', parseInt(e.target.value) || null as unknown as number)}
+                onChange={(e) => set('birth_year', Number.parseInt(e.target.value) || null as unknown as number)}
                 className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
               />
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Current Weight (kg)</label>
+            <label htmlFor="profile-weight" className="text-xs text-gray-500 mb-1 block">Current Weight (kg)</label>
             <input
+              id="profile-weight"
               type="number"
               inputMode="decimal"
               step="0.1"
               placeholder="75"
               value={form.current_weight_kg || ''}
-              onChange={(e) => set('current_weight_kg', parseFloat(e.target.value) || null as unknown as number)}
+              onChange={(e) => set('current_weight_kg', Number.parseFloat(e.target.value) || null as unknown as number)}
               className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-2 block">Gender</label>
+            <label id="gender-label" className="text-xs text-gray-500 mb-2 block">Gender</label>
             <div className="grid grid-cols-3 gap-2">
               {(['male', 'female', 'other'] as const).map((g) => (
                 <button
@@ -230,7 +233,10 @@ function SecuritySection({ email, onSignOut }: Readonly<{ email: string; onSignO
     if (!newEmail.trim()) return
     setEmailLoading(true)
     setEmailStatus(null)
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail.trim() },
+      { emailRedirectTo: globalThis.location.origin }
+    )
     setEmailLoading(false)
     setEmailStatus(error ? error.message : 'Confirmation sent to new email address.')
     if (!error) setNewEmail('')
