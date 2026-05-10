@@ -4,6 +4,7 @@ import { Plus, ChevronLeft, ChevronRight, Flame, Target } from 'lucide-react'
 import Layout from '../components/Layout'
 import { MacroRing, MacroBar } from '../components/MacroRing'
 import { useFoodLog } from '../hooks/useFoodLog'
+import { useExerciseLog } from '../hooks/useExerciseLog'
 import { useProfile } from '../hooks/useProfile'
 import { calculateMacroTargets } from '../lib/macroCalc'
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [date, setDate] = useState(new Date())
   const dateStr = formatDate(date)
   const { totals, byMeal } = useFoodLog(dateStr)
+  const { totalBurned } = useExerciseLog(dateStr)
   const { profile } = useProfile()
   const targets = profile ? calculateMacroTargets(profile) : null
   const isToday = formatDate(date) === formatDate(new Date())
@@ -37,7 +39,8 @@ export default function Dashboard() {
   }
 
   const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'] as const
-  const caloriesLeft = targets ? targets.calories - totals.calories : null
+  const netCalories = totals.calories - totalBurned
+  const caloriesLeft = targets ? targets.calories - netCalories : null
 
   return (
     <Layout
@@ -67,8 +70,8 @@ export default function Dashboard() {
       <div className="bg-gray-900 rounded-3xl p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-gray-400 text-xs font-medium">Calories</p>
-            <p className="text-3xl font-bold text-white mt-0.5">{Math.round(totals.calories)}</p>
+            <p className="text-gray-400 text-xs font-medium">Net Calories</p>
+            <p className="text-3xl font-bold text-white mt-0.5">{Math.round(netCalories)}</p>
             {targets && (
               <p className="text-xs mt-1 font-medium flex items-center gap-1">
                 {caloriesLeft! >= 0 ? (
@@ -79,13 +82,23 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-          {targets && (
-            <div className="text-right">
-              <p className="text-xs text-gray-500">Target</p>
-              <p className="text-2xl font-bold text-gray-400">{targets.calories}</p>
-              <p className="text-xs text-gray-600">kcal</p>
+          <div className="text-right space-y-1">
+            <div>
+              <p className="text-xs text-gray-500">Eaten</p>
+              <p className="text-lg font-bold text-white">{Math.round(totals.calories)}</p>
             </div>
-          )}
+            {totalBurned > 0 && (
+              <div>
+                <p className="text-xs text-gray-500">Burned</p>
+                <p className="text-lg font-bold text-orange-400">−{Math.round(totalBurned)}</p>
+              </div>
+            )}
+            {targets && (
+              <div>
+                <p className="text-xs text-gray-600">target {targets.calories}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {targets && (
@@ -93,8 +106,8 @@ export default function Dashboard() {
             <div
               className="h-full rounded-full transition-all duration-700"
               style={{
-                width: `${Math.min((totals.calories / targets.calories) * 100, 100)}%`,
-                backgroundColor: totals.calories > targets.calories ? '#ef4444' : '#10b981',
+                width: `${Math.min((netCalories / targets.calories) * 100, 100)}%`,
+                backgroundColor: netCalories > targets.calories ? '#ef4444' : '#10b981',
               }}
             />
           </div>

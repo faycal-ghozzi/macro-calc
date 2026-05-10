@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Utensils, TrendingUp, User } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Utensils, BarChart2, User } from 'lucide-react'
 
 const links = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/log', icon: BookOpen, label: 'Log' },
   { to: '/meals', icon: Utensils, label: 'Meals' },
-  { to: '/weight', icon: TrendingUp, label: 'Weight' },
+  { to: '/progress', icon: BarChart2, label: 'Progress' },
   { to: '/profile', icon: User, label: 'Profile' },
 ]
 

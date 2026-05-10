@@ -4,7 +4,7 @@ import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import FoodLog from './pages/FoodLog'
 import Meals from './pages/Meals'
-import WeightTracker from './pages/WeightTracker'
+import Progress from './pages/Progress'
 import Profile from './pages/Profile'
 
 function AppRoutes() {
@@ -25,7 +25,8 @@ function AppRoutes() {
       <Route path="/" element={<Dashboard />} />
       <Route path="/log" element={<FoodLog />} />
       <Route path="/meals" element={<Meals />} />
-      <Route path="/weight" element={<WeightTracker />} />
+      <Route path="/progress" element={<Progress />} />
+      <Route path="/weight" element={<Navigate to="/progress" replace />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
