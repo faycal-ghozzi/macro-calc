@@ -1,12 +1,15 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Utensils, Loader2, X } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Utensils, Loader2, X, QrCode, ScanLine } from 'lucide-react'
 import Layout from '../components/Layout'
 import FoodSearchModal from '../components/FoodSearchModal'
 import AddAmountModal from '../components/AddAmountModal'
+import MealQRModal from '../components/MealQRModal'
+import QRScannerModal from '../components/QRScannerModal'
 import { useMeals } from '../hooks/useMeals'
 import { useFoodLog } from '../hooks/useFoodLog'
-import { FoodItem, MealIngredient, MealType } from '../types'
+import { FoodItem, Meal, MealIngredient, MealType } from '../types'
 import { calcMacrosFromAmount } from '../lib/macroCalc'
+import { MealQRData, mealQRToIngredients } from '../lib/mealQR'
 
 type BuildingIngredient = Omit<MealIngredient, 'id' | 'meal_id'>
 
@@ -22,13 +25,21 @@ export default function Meals() {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
   const [saving, setSaving] = useState(false)
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null)
-
-  // Add to today state
   const [addingMealId, setAddingMealId] = useState<string | null>(null)
+
+  const [qrMeal, setQRMeal] = useState<Meal | null>(null)
+  const [showQRScanner, setShowQRScanner] = useState(false)
+  const [importingMeal, setImportingMeal] = useState<MealQRData | null>(null)
+  const [importName, setImportName] = useState('')
+  const [importSaving, setImportSaving] = useState(false)
 
   function handleFoodSelect(food: FoodItem) {
     setSelectedFood(food)
     setShowSearch(false)
+  }
+
+  function removeIngredient(index: number) {
+    setIngredients((prev) => prev.filter((_, j) => j !== index))
   }
 
   function handleAmountConfirm(amount: number) {
@@ -82,33 +93,57 @@ export default function Meals() {
     setAddingMealId(null)
   }
 
+  function handleQRScan(data: MealQRData) {
+    setShowQRScanner(false)
+    setImportingMeal(data)
+    setImportName(data.n)
+  }
+
+  async function handleImportMeal() {
+    if (!importingMeal || !importName.trim()) return
+    setImportSaving(true)
+    await createMeal(importName.trim(), mealQRToIngredients(importingMeal))
+    setImportSaving(false)
+    setImportingMeal(null)
+    setImportName('')
+  }
+
   const buildingTotals = ingredients.reduce(
     (acc, i) => ({ calories: acc.calories + i.calories, protein_g: acc.protein_g + i.protein_g, carbs_g: acc.carbs_g + i.carbs_g, fat_g: acc.fat_g + i.fat_g }),
     { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
   )
 
+  const headerRight = creatingMeal ? null : (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => setShowQRScanner(true)}
+        className="flex items-center gap-1.5 bg-gray-800 text-gray-400 rounded-xl px-3 py-1.5 text-xs font-medium hover:bg-gray-700 transition-colors"
+      >
+        <ScanLine size={14} />
+        Scan QR
+      </button>
+      <button
+        onClick={() => setCreatingMeal(true)}
+        className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl px-3 py-1.5 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+      >
+        <Plus size={14} />
+        New
+      </button>
+    </div>
+  )
+
   return (
     <>
-      <Layout
-        title="Saved Meals"
-        headerRight={
-          !creatingMeal ? (
-            <button
-              onClick={() => setCreatingMeal(true)}
-              className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 rounded-xl px-3 py-1.5 text-xs font-medium"
-            >
-              <Plus size={14} />
-              New
-            </button>
-          ) : null
-        }
-      >
+      <Layout title="Saved Meals" headerRight={headerRight}>
         {/* Create meal panel */}
         {creatingMeal && (
           <div className="bg-gray-900 rounded-3xl p-4 mb-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-white">New Meal</h3>
-              <button onClick={() => { setCreatingMeal(false); setIngredients([]); setMealName('') }} className="text-gray-500 hover:text-white">
+              <button
+                onClick={() => { setCreatingMeal(false); setIngredients([]); setMealName('') }}
+                className="text-gray-500 hover:text-white"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -121,21 +156,20 @@ export default function Meals() {
               className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
 
-            {/* Ingredients list */}
             {ingredients.length > 0 && (
               <div className="space-y-2">
                 {ingredients.map((ing, i) => (
-                  <div key={i} className="flex items-center justify-between bg-gray-800 rounded-xl px-3 py-2.5">
+                  <div key={`${ing.food_name}-${ing.amount_g}`} className="flex items-center justify-between bg-gray-800 rounded-xl px-3 py-2.5">
                     <div>
                       <p className="text-sm text-white">{ing.food_name}</p>
                       <p className="text-xs text-gray-500">{ing.amount_g}g · {ing.calories} kcal</p>
                     </div>
-                    <button onClick={() => setIngredients((prev) => prev.filter((_, j) => j !== i))} className="text-gray-600 hover:text-red-400 transition-colors">
+                    <button onClick={() => removeIngredient(i)} className="text-gray-600 hover:text-red-400 transition-colors">
                       <X size={16} />
                     </button>
                   </div>
                 ))}
-                <div className="flex gap-4 pt-1 text-xs text-gray-400 px-1">
+                <div className="flex gap-4 pt-1 text-xs px-1">
                   <span className="text-emerald-400 font-semibold">{Math.round(buildingTotals.calories)} kcal</span>
                   <span className="text-blue-400">P {Math.round(buildingTotals.protein_g)}g</span>
                   <span className="text-amber-400">C {Math.round(buildingTotals.carbs_g)}g</span>
@@ -164,11 +198,12 @@ export default function Meals() {
         )}
 
         {/* Meals list */}
-        {loading ? (
+        {loading && (
           <div className="flex justify-center py-12">
             <Loader2 size={24} className="animate-spin text-emerald-400" />
           </div>
-        ) : meals.length === 0 && !creatingMeal ? (
+        )}
+        {!loading && meals.length === 0 && !creatingMeal && (
           <div className="text-center py-16 space-y-3">
             <Utensils size={40} className="text-gray-700 mx-auto" />
             <p className="text-gray-500 text-sm">No saved meals yet</p>
@@ -179,7 +214,8 @@ export default function Meals() {
               Create your first meal
             </button>
           </div>
-        ) : (
+        )}
+        {!loading && meals.length > 0 && (
           <div className="space-y-3">
             {meals.map((meal) => {
               const expanded = expandedMeal === meal.id
@@ -201,7 +237,7 @@ export default function Meals() {
                           <span className="text-xs text-rose-400">F {Math.round(totals.fat_g)}g</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleAddToToday(meal.id)}
                           disabled={addingMealId === meal.id}
@@ -210,10 +246,17 @@ export default function Meals() {
                           {addingMealId === meal.id ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                           Today
                         </button>
-                        <button onClick={() => deleteMeal(meal.id)} className="text-gray-600 hover:text-red-400 p-1 transition-colors">
+                        <button
+                          onClick={() => setQRMeal(meal)}
+                          className="text-gray-500 hover:text-emerald-400 p-1.5 transition-colors"
+                          aria-label="Share via QR"
+                        >
+                          <QrCode size={16} />
+                        </button>
+                        <button onClick={() => deleteMeal(meal.id)} className="text-gray-600 hover:text-red-400 p-1.5 transition-colors">
                           <Trash2 size={16} />
                         </button>
-                        <button onClick={() => setExpandedMeal(expanded ? null : meal.id)} className="text-gray-600 p-1">
+                        <button onClick={() => setExpandedMeal(expanded ? null : meal.id)} className="text-gray-600 p-1.5">
                           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
                       </div>
@@ -253,6 +296,66 @@ export default function Meals() {
           onConfirm={handleAmountConfirm}
           onBack={() => { setSelectedFood(null); setShowSearch(true) }}
         />
+      )}
+
+      {qrMeal && (
+        <MealQRModal meal={qrMeal} onClose={() => setQRMeal(null)} />
+      )}
+
+      {showQRScanner && (
+        <QRScannerModal onScan={handleQRScan} onClose={() => setShowQRScanner(false)} />
+      )}
+
+      {/* Import meal dialog */}
+      {importingMeal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-gray-900 rounded-t-3xl px-5 pt-5 pb-10 space-y-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between shrink-0">
+              <h2 className="text-base font-semibold text-white">Import Meal</h2>
+              <button
+                onClick={() => setImportingMeal(null)}
+                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-1 shrink-0">
+              <label htmlFor="import-name" className="text-xs text-gray-500">Meal name — rename or keep as is</label>
+              <input
+                id="import-name"
+                type="text"
+                value={importName}
+                onChange={(e) => setImportName(e.target.value)}
+                className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1.5 min-h-0">
+              <p className="text-xs text-gray-500">{importingMeal.i.length} ingredient{importingMeal.i.length === 1 ? '' : 's'}</p>
+              {importingMeal.i.map((ing) => (
+                <div key={`${ing.n}-${ing.a}`} className="flex justify-between items-center bg-gray-800 rounded-xl px-3 py-2.5">
+                  <div>
+                    <p className="text-sm text-white">{ing.n}</p>
+                    <p className="text-xs text-gray-500">{ing.a}g</p>
+                  </div>
+                  <span className="text-xs text-gray-400">{ing.c} kcal</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="shrink-0 pt-1">
+              <button
+                onClick={handleImportMeal}
+                disabled={importSaving || !importName.trim()}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-2xl py-4 text-sm flex items-center justify-center gap-2 transition-colors"
+              >
+                {importSaving ? <Loader2 size={16} className="animate-spin" /> : null}
+                Save to My Meals
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
