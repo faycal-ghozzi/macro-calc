@@ -26,10 +26,17 @@ export default function BarcodeScanner({ onScan, onClose }: Readonly<BarcodeScan
         scanner = new Html5QrcodeScanner(
           'html5-qrcode-element',
           {
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
-            supportedScanTypes: [0], // camera only (SCAN_TYPE_CAMERA = 0)
-            rememberLastUsedCamera: true,
+            fps: 15,
+            qrbox: { width: 300, height: 150 },
+            supportedScanTypes: [0],
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            videoConstraints: {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            },
           },
           false
         ) as typeof scanner

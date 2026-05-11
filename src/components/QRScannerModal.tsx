@@ -29,17 +29,25 @@ export default function QRScannerModal({ onScan, onClose }: Readonly<QRScannerMo
         scanner = new Html5QrcodeScanner(
           'qr-meal-scanner-element',
           {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
+            fps: 15,
+            qrbox: { width: 280, height: 280 },
             supportedScanTypes: [0],
-            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            videoConstraints: {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            },
           },
           false
         ) as typeof scanner
 
         scannerRef.current = scanner
+        if (!scanner) return
 
-        scanner!.render(
+        scanner.render(
           (decodedText) => {
             if (firedRef.current) return
             const data = decodeMealFromQR(decodedText)
