@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { X, ChevronRight } from 'lucide-react'
+import { X, ChevronRight, Heart } from 'lucide-react'
 import { FoodItem, MeasurementUnit } from '../types'
 import { calcMacrosFromAmount, convertToGrams } from '../lib/macroCalc'
+import { useFavorites } from '../hooks/useFavorites'
 
 interface AddAmountModalProps {
   food: FoodItem
@@ -34,6 +35,9 @@ const QUICK_AMOUNTS: Record<MeasurementUnit, number[]> = {
 }
 
 export default function AddAmountModal({ food, onConfirm, onBack }: Readonly<AddAmountModalProps>) {
+  const { isFavorite, toggleFavorite } = useFavorites()
+  const fav = isFavorite(food)
+  const favColorClass = fav ? 'text-rose-400 hover:text-rose-300' : 'text-gray-500 hover:text-rose-400'
   const [unit, setUnit] = useState<MeasurementUnit>('g')
   const [amount, setAmount] = useState('100')
 
@@ -73,9 +77,19 @@ export default function AddAmountModal({ food, onConfirm, onBack }: Readonly<Add
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Food info */}
-        <div className="bg-gray-900 rounded-2xl p-4">
-          <p className="font-semibold text-white">{food.name}</p>
-          <p className="text-xs text-gray-500 mt-0.5">per 100g: {food.calories_100g} kcal</p>
+        <div className="bg-gray-900 rounded-2xl p-4 flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-white">{food.name}</p>
+            <p className="text-xs text-gray-500 mt-0.5">per 100g: {food.calories_100g} kcal</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toggleFavorite(food)}
+            className={`p-1 transition-colors shrink-0 ${favColorClass}`}
+            aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart size={20} fill={fav ? 'currentColor' : 'none'} />
+          </button>
         </div>
 
         {/* Unit selector */}

@@ -40,7 +40,11 @@ export default function Meals() {
         food_name: selectedFood.name,
         barcode: selectedFood.barcode,
         amount_g: amount,
-        ...macros,
+        calories: macros.calories,
+        protein_g: macros.protein_g,
+        carbs_g: macros.carbs_g,
+        fat_g: macros.fat_g,
+        fiber_g: macros.fiber_g,
       },
     ])
     setSelectedFood(null)

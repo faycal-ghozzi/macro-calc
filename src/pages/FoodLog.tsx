@@ -7,7 +7,7 @@ import AddAmountModal from '../components/AddAmountModal'
 import ExerciseModal from '../components/ExerciseModal'
 import { useFoodLog } from '../hooks/useFoodLog'
 import { useExerciseLog } from '../hooks/useExerciseLog'
-import { FoodItem, MealType } from '../types'
+import { FoodItem, Meal, MealType } from '../types'
 import { calcMacrosFromAmount } from '../lib/macroCalc'
 
 const MEAL_ICONS: Record<MealType, string> = {
@@ -44,6 +44,26 @@ export default function FoodLog() {
   function handleFoodSelect(food: FoodItem) {
     setSelectedFood(food)
     setShowSearch(false)
+  }
+
+  async function handleMealSelect(meal: Meal) {
+    if (!meal.ingredients || !pendingMeal) return
+    setShowSearch(false)
+    for (const ing of meal.ingredients) {
+      await addFoodLog({
+        logged_at: dateStr,
+        meal_type: pendingMeal,
+        food_name: ing.food_name,
+        barcode: ing.barcode,
+        amount_g: ing.amount_g,
+        calories: ing.calories,
+        protein_g: ing.protein_g,
+        carbs_g: ing.carbs_g,
+        fat_g: ing.fat_g,
+        fiber_g: ing.fiber_g,
+        sugar_g: 0,
+      })
+    }
   }
 
   async function handleAmountConfirm(amount: number) {
@@ -208,6 +228,7 @@ export default function FoodLog() {
         <FoodSearchModal
           onSelect={handleFoodSelect}
           onClose={() => { setShowSearch(false); setActiveMeal(null) }}
+          onSelectMeal={handleMealSelect}
         />
       )}
 

@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Search, Barcode, Loader2, Heart, Star } from 'lucide-react'
-import { FoodItem } from '../types'
+import { X, Search, Barcode, Loader2, Heart, Star, Utensils } from 'lucide-react'
+import { FoodItem, Meal } from '../types'
 import { searchCommonFoods, FOOD_CATEGORIES } from '../lib/commonFoods'
 import { fetchProductByBarcode, searchProducts } from '../lib/openfoodfacts'
 import { useFavorites } from '../hooks/useFavorites'
+import { useMeals } from '../hooks/useMeals'
 import BarcodeScanner from './BarcodeScanner'
 
 interface FoodSearchModalProps {
   onSelect: (food: FoodItem) => void
   onClose: () => void
+  onSelectMeal?: (meal: Meal) => void
 }
 
-type Tab = 'favorites' | 'search' | 'barcode'
+type Tab = 'favorites' | 'search' | 'barcode' | 'meals'
 
 interface FoodCardProps {
   food: FoodItem
@@ -56,8 +58,9 @@ function FoodCard({ food, onSelect, isFav, onToggleFav }: Readonly<FoodCardProps
   )
 }
 
-export default function FoodSearchModal({ onSelect, onClose }: Readonly<FoodSearchModalProps>) {
+export default function FoodSearchModal({ onSelect, onClose, onSelectMeal }: Readonly<FoodSearchModalProps>) {
   const { favorites, loading: favLoading, isFavorite, toggleFavorite } = useFavorites()
+  const { meals, loading: mealsLoading } = useMeals()
 
   const [activeTab, setActiveTab] = useState<Tab>('favorites')
   const [query, setQuery] = useState('')
@@ -138,6 +141,7 @@ export default function FoodSearchModal({ onSelect, onClose }: Readonly<FoodSear
     { id: 'favorites', label: '⭐ Saved' },
     { id: 'search', label: 'Search' },
     { id: 'barcode', label: 'Barcode' },
+    ...(onSelectMeal ? [{ id: 'meals' as Tab, label: 'My Meals' }] : []),
   ]
 
   return (
@@ -310,6 +314,51 @@ export default function FoodSearchModal({ onSelect, onClose }: Readonly<FoodSear
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── MY MEALS TAB ── */}
+      {activeTab === 'meals' && onSelectMeal && (
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-2">
+          {mealsLoading && (
+            <div className="flex justify-center py-12">
+              <Loader2 size={22} className="animate-spin text-emerald-400" />
+            </div>
+          )}
+          {!mealsLoading && meals.length === 0 && (
+            <div className="text-center py-16 space-y-3">
+              <Utensils size={40} className="text-gray-700 mx-auto" />
+              <p className="text-gray-500 text-sm">No saved meals yet</p>
+              <p className="text-gray-600 text-xs">Create meals on the Meals page</p>
+            </div>
+          )}
+          {!mealsLoading && meals.length > 0 && meals.map((meal) => {
+            const totals = (meal.ingredients ?? []).reduce(
+              (acc, i) => ({ cal: acc.cal + i.calories, p: acc.p + i.protein_g, c: acc.c + i.carbs_g, f: acc.f + i.fat_g }),
+              { cal: 0, p: 0, c: 0, f: 0 }
+            )
+            return (
+              <button
+                key={meal.id}
+                type="button"
+                onClick={() => onSelectMeal(meal)}
+                className="w-full text-left bg-gray-900 rounded-2xl p-4 hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-white">{meal.name}</p>
+                  <p className="text-sm font-bold text-emerald-400 shrink-0">{Math.round(totals.cal)} kcal</p>
+                </div>
+                <div className="flex gap-3 mt-2">
+                  <span className="text-xs text-blue-400">P {Math.round(totals.p)}g</span>
+                  <span className="text-xs text-amber-400">C {Math.round(totals.c)}g</span>
+                  <span className="text-xs text-rose-400">F {Math.round(totals.f)}g</span>
+                  {meal.ingredients && (
+                    <span className="text-xs text-gray-500">{meal.ingredients.length} ingredient{meal.ingredients.length === 1 ? '' : 's'}</span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
