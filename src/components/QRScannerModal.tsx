@@ -33,7 +33,6 @@ export default function QRScannerModal({ onScan, onClose }: Readonly<QRScannerMo
             qrbox: { width: 280, height: 280 },
             supportedScanTypes: [0],
             showTorchButtonIfSupported: true,
-            showZoomSliderIfSupported: true,
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
             videoConstraints: {
               facingMode: { ideal: 'environment' },

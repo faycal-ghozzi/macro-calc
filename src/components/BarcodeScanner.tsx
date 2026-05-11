@@ -30,7 +30,6 @@ export default function BarcodeScanner({ onScan, onClose }: Readonly<BarcodeScan
             qrbox: { width: 300, height: 150 },
             supportedScanTypes: [0],
             showTorchButtonIfSupported: true,
-            showZoomSliderIfSupported: true,
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
             videoConstraints: {
               facingMode: { ideal: 'environment' },
