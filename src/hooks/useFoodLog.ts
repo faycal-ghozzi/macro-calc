@@ -37,6 +37,17 @@ export function useFoodLog(date: string) {
     return { error }
   }
 
+  async function updateFoodLog(id: string, updates: Partial<Omit<FoodLog, 'id' | 'user_id' | 'created_at'>>) {
+    const { data, error } = await supabase
+      .from('food_logs')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+    if (!error && data) setLogs((prev) => prev.map((l) => l.id === id ? data as FoodLog : l))
+    return { error }
+  }
+
   async function deleteFoodLog(id: string) {
     const { error } = await supabase.from('food_logs').delete().eq('id', id)
     if (!error) setLogs((prev) => prev.filter((l) => l.id !== id))
@@ -56,5 +67,5 @@ export function useFoodLog(date: string) {
     { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 }
   )
 
-  return { logs, loading, totals, byMeal, addFoodLog, deleteFoodLog, refetch: fetchLogs }
+  return { logs, loading, totals, byMeal, addFoodLog, updateFoodLog, deleteFoodLog, refetch: fetchLogs }
 }
