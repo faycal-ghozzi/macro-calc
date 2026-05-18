@@ -18,6 +18,15 @@ export interface WeightEntry {
   created_at: string
 }
 
+export interface MealLogIngredient {
+  food_name: string
+  amount_g: number
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+}
+
 export interface FoodLog {
   id: string
   user_id: string
@@ -32,6 +41,7 @@ export interface FoodLog {
   fat_g: number
   fiber_g?: number
   sugar_g?: number
+  meal_ingredients?: MealLogIngredient[]
   created_at: string
 }
 

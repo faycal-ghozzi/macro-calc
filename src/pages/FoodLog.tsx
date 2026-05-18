@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Trash2, Flame, QrCode, ScanLine, X, Loader2, Pencil } from 'lucide-react'
+import { Plus, Trash2, Flame, QrCode, ScanLine, X, Loader2, Pencil, ChevronDown, ChevronUp } from 'lucide-react'
 import Layout from '../components/Layout'
 import FoodSearchModal from '../components/FoodSearchModal'
 import AddAmountModal from '../components/AddAmountModal'
@@ -37,6 +37,7 @@ export default function FoodLog() {
   const [pendingMeal, setPendingMeal] = useState<MealType | null>(initialMeal)
 
   const [editingEntry, setEditingEntry] = useState<FoodLogEntry | null>(null)
+  const [expandedLogMeal, setExpandedLogMeal] = useState<string | null>(null)
   const [showLogQR, setShowLogQR] = useState(false)
   const [showLogScanner, setShowLogScanner] = useState(false)
   const [importingLog, setImportingLog] = useState<LogQRData | null>(null)
@@ -59,21 +60,27 @@ export default function FoodLog() {
   async function handleMealSelect(meal: Meal) {
     if (!meal.ingredients || !pendingMeal) return
     setShowSearch(false)
-    for (const ing of meal.ingredients) {
-      await addFoodLog({
-        logged_at: dateStr,
-        meal_type: pendingMeal,
-        food_name: ing.food_name,
-        barcode: ing.barcode,
-        amount_g: ing.amount_g,
-        calories: ing.calories,
-        protein_g: ing.protein_g,
-        carbs_g: ing.carbs_g,
-        fat_g: ing.fat_g,
-        fiber_g: ing.fiber_g,
-        sugar_g: 0,
-      })
-    }
+    const ings = meal.ingredients
+    await addFoodLog({
+      logged_at: dateStr,
+      meal_type: pendingMeal,
+      food_name: meal.name,
+      amount_g: ings.reduce((s, i) => s + i.amount_g, 0),
+      calories: ings.reduce((s, i) => s + i.calories, 0),
+      protein_g: ings.reduce((s, i) => s + i.protein_g, 0),
+      carbs_g: ings.reduce((s, i) => s + i.carbs_g, 0),
+      fat_g: ings.reduce((s, i) => s + i.fat_g, 0),
+      fiber_g: ings.reduce((s, i) => s + (i.fiber_g ?? 0), 0),
+      sugar_g: 0,
+      meal_ingredients: ings.map((i) => ({
+        food_name: i.food_name,
+        amount_g: i.amount_g,
+        calories: i.calories,
+        protein_g: i.protein_g,
+        carbs_g: i.carbs_g,
+        fat_g: i.fat_g,
+      })),
+    })
   }
 
   async function handleAmountConfirm(amount: number) {
@@ -208,30 +215,59 @@ export default function FoodLog() {
 
                 {items.length > 0 && (
                   <div className="border-t border-gray-800">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-800/50 last:border-0">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white truncate">{item.food_name}</p>
-                          <p className="text-xs text-gray-500">{item.amount_g}g</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-white">{Math.round(item.calories)}</p>
-                            <div className="flex gap-1.5 justify-end">
-                              <span className="text-[10px] text-blue-400">P{item.protein_g}g</span>
-                              <span className="text-[10px] text-amber-400">C{item.carbs_g}g</span>
-                              <span className="text-[10px] text-rose-400">F{item.fat_g}g</span>
+                    {items.map((item) => {
+                      const isMealEntry = item.meal_ingredients && item.meal_ingredients.length > 0
+                      const isExpanded = expandedLogMeal === item.id
+                      return (
+                        <div key={item.id} className="border-b border-gray-800/50 last:border-0">
+                          <div className="flex items-center justify-between px-4 py-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm text-white truncate">{item.food_name}</p>
+                                {isMealEntry && (
+                                  <span className="shrink-0 text-[10px] font-medium bg-emerald-500/15 text-emerald-400 rounded-full px-1.5 py-0.5">Meal</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500">{item.amount_g}g</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-white">{Math.round(item.calories)}</p>
+                                <div className="flex gap-1.5 justify-end">
+                                  <span className="text-[10px] text-blue-400">P{item.protein_g}g</span>
+                                  <span className="text-[10px] text-amber-400">C{item.carbs_g}g</span>
+                                  <span className="text-[10px] text-rose-400">F{item.fat_g}g</span>
+                                </div>
+                              </div>
+                              {isMealEntry && (
+                                <button onClick={() => setExpandedLogMeal(isExpanded ? null : item.id)} className="p-1.5 text-gray-500 hover:text-white transition-colors">
+                                  {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                </button>
+                              )}
+                              <button onClick={() => setEditingEntry(item)} className="p-1.5 text-gray-600 hover:text-emerald-400 transition-colors">
+                                <Pencil size={15} />
+                              </button>
+                              <button onClick={() => deleteFoodLog(item.id)} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors">
+                                <Trash2 size={15} />
+                              </button>
                             </div>
                           </div>
-                          <button onClick={() => setEditingEntry(item)} className="p-1.5 text-gray-600 hover:text-emerald-400 transition-colors">
-                            <Pencil size={15} />
-                          </button>
-                          <button onClick={() => deleteFoodLog(item.id)} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors">
-                            <Trash2 size={15} />
-                          </button>
+                          {isMealEntry && isExpanded && (
+                            <div className="px-4 pb-3 space-y-1.5">
+                              {item.meal_ingredients!.map((ing, idx) => (
+                                <div key={`${ing.food_name}-${idx}`} className="flex justify-between items-center bg-gray-800/60 rounded-xl px-3 py-2">
+                                  <div>
+                                    <p className="text-xs text-gray-300">{ing.food_name}</p>
+                                    <p className="text-[10px] text-gray-500">{ing.amount_g}g</p>
+                                  </div>
+                                  <span className="text-xs text-gray-400">{Math.round(ing.calories)} kcal</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
