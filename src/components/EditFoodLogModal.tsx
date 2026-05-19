@@ -25,6 +25,7 @@ function MacroField({ id, label, value, onChange, color, focusColor }: Readonly<
         id={id}
         type="number"
         inputMode="decimal"
+        step="any"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={`w-full bg-gray-800 rounded-xl px-3 py-2.5 ${color} font-semibold text-sm outline-none focus:ring-2 ${focusColor}`}
@@ -86,6 +87,7 @@ export default function EditFoodLogModal({ entry, onSave, onClose }: Readonly<Ed
             id="edit-amount"
             type="number"
             inputMode="decimal"
+            step="any"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="w-full bg-gray-800 rounded-xl px-4 py-3 text-white text-sm outline-none focus:ring-2 focus:ring-emerald-500/50"

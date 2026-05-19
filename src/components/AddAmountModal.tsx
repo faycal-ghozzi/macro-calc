@@ -131,7 +131,7 @@ export default function AddAmountModal({ food, onConfirm, onBack }: Readonly<Add
               onChange={(e) => setAmount(e.target.value)}
               className="flex-1 bg-transparent px-4 py-4 text-2xl font-bold text-white outline-none text-center"
               min="0.1"
-              step={unit === 'L' ? '0.1' : '1'}
+              step="any"
             />
             <span className="pr-4 text-gray-500 font-medium text-sm">{unit}</span>
           </div>
