@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { useProfile } from './hooks/useProfile'
+import { isDeletionPending } from './lib/accountDeletion'
 import Auth from './pages/Auth'
+import AccountPendingDeletion from './pages/AccountPendingDeletion'
 import Dashboard from './pages/Dashboard'
 import FoodLog from './pages/FoodLog'
 import Meals from './pages/Meals'
@@ -9,8 +12,9 @@ import Profile from './pages/Profile'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
+  const { profile, loading: profileLoading } = useProfile()
 
-  if (loading) {
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -19,6 +23,8 @@ function AppRoutes() {
   }
 
   if (!user) return <Auth />
+
+  if (isDeletionPending(profile)) return <AccountPendingDeletion />
 
   return (
     <Routes>

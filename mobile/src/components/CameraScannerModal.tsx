@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, Modal, Animated } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Modal, Animated, Platform, PermissionsAndroid } from 'react-native'
 import { Camera, CameraType, type CameraApi, type CodeFormat } from 'react-native-camera-kit'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import * as Haptics from '../lib/haptics'
@@ -32,6 +32,27 @@ export function CameraScannerModal({ visible, title, hint, types, shape, onScan,
   const detectedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pulse = useRef(new Animated.Value(0)).current
 
+  // react-native-camera-kit doesn't implement permission checks on Android
+  // (throws "Not implemented" - see its README), so Android uses the core
+  // PermissionsAndroid API directly instead of the camera-kit ref methods.
+  async function checkPermission(): Promise<boolean> {
+    if (Platform.OS === 'android') {
+      return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA)
+    }
+    return !!(await cameraRef.current?.checkDeviceCameraAuthorizationStatus())
+  }
+
+  async function requestPermission() {
+    let granted: boolean
+    if (Platform.OS === 'android') {
+      const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA)
+      granted = result === PermissionsAndroid.RESULTS.GRANTED
+    } else {
+      granted = !!(await cameraRef.current?.requestDeviceCameraAuthorization())
+    }
+    setHasPermission(granted)
+  }
+
   useEffect(() => {
     if (!visible) return
     firedRef.current = false
@@ -39,13 +60,8 @@ export function CameraScannerModal({ visible, title, hint, types, shape, onScan,
     setZoom(1)
     setDetected(false)
     pulse.setValue(0)
-    cameraRef.current?.checkDeviceCameraAuthorizationStatus().then(setHasPermission)
+    checkPermission().then(setHasPermission)
   }, [visible])
-
-  async function requestPermission() {
-    const granted = await cameraRef.current?.requestDeviceCameraAuthorization()
-    setHasPermission(!!granted)
-  }
 
   function handleReadCode(event: { nativeEvent: { codeStringValue: string } }) {
     setDetected(true)

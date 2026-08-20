@@ -7,6 +7,7 @@ export interface Profile {
   goal: 'lose' | 'maintain' | 'gain'
   activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
   current_weight_kg: number | null
+  deletion_requested_at: string | null
 }
 
 export interface WeightEntry {

@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react'
-import { LogOut, Save, Loader2, Target, Flame, Mail, Lock, Check } from 'lucide-react'
+import { LogOut, Save, Loader2, Target, Flame, Mail, Lock, Check, AlertTriangle, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
 import { useProfile } from '../hooks/useProfile'
@@ -212,13 +212,17 @@ export default function Profile() {
         </button>
 
         {/* Account / Security */}
-        <SecuritySection email={user?.email ?? ''} onSignOut={signOut} />
+        <SecuritySection email={user?.email ?? ''} onSignOut={signOut} onRequestDeletion={() => updateProfile({ deletion_requested_at: new Date().toISOString() }).then(signOut)} />
       </form>
     </Layout>
   )
 }
 
-function SecuritySection({ email, onSignOut }: Readonly<{ email: string; onSignOut: () => void }>) {
+function SecuritySection({
+  email,
+  onSignOut,
+  onRequestDeletion,
+}: Readonly<{ email: string; onSignOut: () => void; onRequestDeletion: () => void }>) {
   const [newEmail, setNewEmail] = useState('')
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
@@ -227,6 +231,7 @@ function SecuritySection({ email, onSignOut }: Readonly<{ email: string; onSignO
   const [pwStatus, setPwStatus] = useState<string | null>(null)
   const [emailLoading, setEmailLoading] = useState(false)
   const [pwLoading, setPwLoading] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   async function handleEmailUpdate(e: FormEvent) {
     e.preventDefault()
@@ -346,6 +351,48 @@ function SecuritySection({ email, onSignOut }: Readonly<{ email: string; onSignO
           <LogOut size={16} />
           Sign Out
         </button>
+      </div>
+
+      {/* Danger zone */}
+      <div className="bg-gray-900 rounded-3xl p-4 space-y-3 ring-1 ring-red-500/20">
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={15} className="text-red-400" />
+          <p className="text-sm font-semibold text-gray-400">Danger Zone</p>
+        </div>
+        {!showDeleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium rounded-xl py-2.5 text-sm transition-colors"
+          >
+            <Trash2 size={14} />
+            Delete Account
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              This permanently deletes your account and all your data (food logs, weight history, meals,
+              exercise logs) after a 30-day grace period. You can cancel any time before then by logging
+              back in. After 30 days this cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl py-2.5 text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onRequestDeletion}
+                className="flex-1 bg-red-500 hover:bg-red-400 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+              >
+                Yes, delete my account
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

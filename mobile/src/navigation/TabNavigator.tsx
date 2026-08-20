@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import Ionicons from 'react-native-vector-icons/Ionicons'
-import { View, Pressable, StyleSheet } from 'react-native'
+import { View, Pressable, StyleSheet, Platform } from 'react-native'
 import * as Haptics from '../lib/haptics'
 import { BlurView } from '@react-native-community/blur'
 import DashboardScreen from '../screens/DashboardScreen'
@@ -47,13 +47,22 @@ export function TabNavigator() {
           height: 82,
           paddingTop: 8,
         },
-        tabBarBackground: () => (
-          <BlurView
-            blurAmount={theme.mode === 'dark' ? 20 : 30}
-            blurType={theme.mode === 'dark' ? 'dark' : 'light'}
-            style={[StyleSheet.absoluteFill, { borderTopWidth: 1, borderTopColor: theme.colors.cardBorder, backgroundColor: theme.colors.background + (theme.mode === 'dark' ? 'CC' : 'EE') }]}
-          />
-        ),
+        tabBarBackground: () =>
+          // @react-native-community/blur's Android implementation is unreliable -
+          // on many devices it renders as a heavy dark tint instead of an actual
+          // blur (most visible with blurType "dark"), so Android gets a plain
+          // tinted background instead of a real blur. iOS keeps the real blur.
+          Platform.OS === 'ios' ? (
+            <BlurView
+              blurAmount={theme.mode === 'dark' ? 20 : 30}
+              blurType={theme.mode === 'dark' ? 'dark' : 'light'}
+              style={[StyleSheet.absoluteFill, { borderTopWidth: 1, borderTopColor: theme.colors.cardBorder, backgroundColor: theme.colors.background + (theme.mode === 'dark' ? 'CC' : 'EE') }]}
+            />
+          ) : (
+            <View
+              style={[StyleSheet.absoluteFill, { borderTopWidth: 1, borderTopColor: theme.colors.cardBorder, backgroundColor: theme.colors.background + (theme.mode === 'dark' ? 'F2' : 'FA') }]}
+            />
+          ),
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: -2 },
         tabBarIcon: ({ color, size, focused }) => (
           <View style={focused ? [styles.activeDot, { backgroundColor: theme.colors.accentSoft }] : undefined}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
@@ -214,12 +214,24 @@ export default function ProfileScreen() {
         <ThemePicker />
       </Card>
 
-      <SecuritySection email={user?.email ?? ''} onSignOut={signOut} />
+      <SecuritySection
+        email={user?.email ?? ''}
+        onSignOut={signOut}
+        onRequestDeletion={() => updateProfile({ deletion_requested_at: new Date().toISOString() }).then(signOut)}
+      />
     </Screen>
   )
 }
 
-function SecuritySection({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+function SecuritySection({
+  email,
+  onSignOut,
+  onRequestDeletion,
+}: {
+  email: string
+  onSignOut: () => void
+  onRequestDeletion: () => void
+}) {
   const theme = useTheme()
   const [newEmail, setNewEmail] = useState('')
   const [currentPw, setCurrentPw] = useState('')
@@ -333,6 +345,30 @@ function SecuritySection({ email, onSignOut }: { email: string; onSignOut: () =>
         <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onSignOut() }} style={styles.signOutButton}>
           <Ionicons name="log-out-outline" size={17} color={theme.colors.danger} />
           <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.danger }}>Sign Out</Text>
+        </Pressable>
+      </Card>
+
+      <Card style={{ gap: 10, borderWidth: 1, borderColor: theme.colors.danger + '33' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="warning-outline" size={15} color={theme.colors.danger} />
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Danger Zone</Text>
+        </View>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+            Alert.alert(
+              'Delete account?',
+              'This permanently deletes your account and all your data (food logs, weight history, meals, exercise logs) after a 30-day grace period. You can cancel any time before then by logging back in. After 30 days this cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete Account', style: 'destructive', onPress: onRequestDeletion },
+              ]
+            )
+          }}
+          style={[styles.secondaryButton, { backgroundColor: theme.colors.danger + '1A', borderRadius: theme.style.cardRadius - 8 }]}
+        >
+          <Ionicons name="trash-outline" size={14} color={theme.colors.danger} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.danger }}>Delete Account</Text>
         </Pressable>
       </Card>
     </View>
