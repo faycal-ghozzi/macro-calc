@@ -20,6 +20,8 @@ import { useFoodLog } from '../hooks/useFoodLog'
 import { useExerciseLog } from '../hooks/useExerciseLog'
 import { useMeals } from '../hooks/useMeals'
 import { useEntitlements } from '../hooks/useEntitlements'
+import { useTour, TourTarget } from '../contexts/TourContext'
+import { useTourProgressStore } from '../store/useTourProgressStore'
 import { calcMacrosFromAmount } from '../lib/macroCalc'
 import { encodeLogToQR, decodeLogFromQR, logEntryMealType, LogQRData } from '../lib/logQR'
 import type { TabParamList } from '../navigation/TabNavigator'
@@ -51,6 +53,13 @@ export default function FoodLogScreen() {
   const { touchMealUsed } = useMeals()
   const { checkAndIncrementQrShare, checkAndIncrementQrReceive } = useEntitlements()
   const [paywallProduct, setPaywallProduct] = useState<'qr_sharing_unlimited' | null>(null)
+  const { showTip } = useTour()
+  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
+
+  useEffect(() => {
+    if (seenFeatureTips.tip_log_share) return
+    showTip('tip_log_share', { title: 'Share your daily log', body: 'Generate a QR code of your whole day for a friend to scan and import.' })
+  }, [seenFeatureTips, showTip])
 
   const [pendingMeal, setPendingMeal] = useState<MealType | null>(null)
   const [showSearch, setShowSearch] = useState(false)
@@ -169,10 +178,12 @@ export default function FoodLogScreen() {
             <Ionicons name="scan-outline" size={14} color={theme.colors.textSecondary} />
             <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
           </Pressable>
-          <Pressable onPress={handleShareLog} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
-            <Ionicons name="qr-code-outline" size={14} color={theme.colors.textSecondary} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Share</Text>
-          </Pressable>
+          <TourTarget id="tip_log_share">
+            <Pressable onPress={handleShareLog} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
+              <Ionicons name="qr-code-outline" size={14} color={theme.colors.textSecondary} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Share</Text>
+            </Pressable>
+          </TourTarget>
         </View>
       </View>
 
@@ -213,7 +224,9 @@ export default function FoodLogScreen() {
                     <Text style={[styles.mealName, { color: theme.colors.textPrimary }]}>
                       {meal.charAt(0).toUpperCase() + meal.slice(1)}
                     </Text>
-                    {items.length > 0 && (
+                    {items.length === 0 ? (
+                      <Text style={[styles.mealMeta, { color: theme.colors.textTertiary }]}>No items yet</Text>
+                    ) : (
                       <Text style={[styles.mealMeta, { color: theme.colors.textTertiary }]}>
                         {Math.round(mealCals)} kcal · {Math.round(mealProt)}g protein
                       </Text>

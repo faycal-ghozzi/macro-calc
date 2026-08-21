@@ -1,6 +1,10 @@
+import { useEffect } from 'react'
 import { View, Text } from 'react-native'
 import Svg, { Polyline, Circle, Line as SvgLine } from 'react-native-svg'
+import Animated, { useAnimatedProps, useSharedValue, withTiming, Easing } from 'react-native-reanimated'
 import { useTheme } from '../theme/ThemeProvider'
+
+const AnimatedPolyline = Animated.createAnimatedComponent(Polyline)
 
 interface Point {
   date: string
@@ -25,6 +29,24 @@ export function WeightLineChart({ data, height = 160 }: { data: Point[]; height?
   const polylinePoints = points.map((p) => `${p.x},${p.y}`).join(' ')
   const gridLines = 3
 
+  const totalLength = points.reduce((sum, p, i) => {
+    if (i === 0) return 0
+    const prev = points[i - 1]
+    return sum + Math.hypot(p.x - prev.x, p.y - prev.y)
+  }, 0)
+
+  const progress = useSharedValue(0)
+
+  useEffect(() => {
+    progress.value = 0
+    progress.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) })
+  }, [polylinePoints])
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDasharray: [totalLength, totalLength] as unknown as string,
+    strokeDashoffset: totalLength * (1 - progress.value),
+  }))
+
   return (
     <View>
       <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
@@ -34,7 +56,15 @@ export function WeightLineChart({ data, height = 160 }: { data: Point[]; height?
             <SvgLine key={i} x1={padding} y1={y} x2={width - padding} y2={y} stroke={theme.colors.divider} strokeWidth={1} strokeDasharray="4 4" />
           )
         })}
-        <Polyline points={polylinePoints} fill="none" stroke={theme.colors.accent} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        <AnimatedPolyline
+          points={polylinePoints}
+          fill="none"
+          stroke={theme.colors.accent}
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          animatedProps={animatedProps}
+        />
         {points.map((p, i) => (
           <Circle key={i} cx={p.x} cy={p.y} r={3} fill={theme.colors.accent} />
         ))}

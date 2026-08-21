@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert, useWindowDimensions } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
@@ -7,11 +8,14 @@ import { Card } from '../components/Card'
 import { ThemePicker } from '../components/ThemePicker'
 import { PaywallModal } from '../components/PaywallModal'
 import { BundleNudgeBanner } from '../components/BundleNudgeBanner'
+import { LoadingState } from '../components/LoadingState'
 import { useTheme } from '../theme/ThemeProvider'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../contexts/AuthContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { useDowngradeUiStore } from '../store/useDowngradeUiStore'
+import { useTour } from '../contexts/TourContext'
+import { getFirstLoginTourSteps } from '../lib/tourSteps'
 import { supabase } from '../lib/supabase'
 import { calculateMacroTargets } from '../lib/macroCalc'
 import { PRODUCTS } from '../lib/products'
@@ -35,6 +39,9 @@ export default function ProfileScreen() {
   const theme = useTheme()
   const { profile, loading, updateProfile } = useProfile()
   const { user, signOut } = useAuth()
+  const { startFirstLoginTour } = useTour()
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   const [form, setForm] = useState<Partial<ProfileType>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -59,7 +66,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <Screen>
-        <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 60 }} />
+        <LoadingState minHeight={300} />
       </Screen>
     )
   }
@@ -219,6 +226,17 @@ export default function ProfileScreen() {
         <ThemePicker />
       </Card>
 
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync()
+          startFirstLoginTour(getFirstLoginTourSteps(screenWidth, screenHeight, insets.bottom))
+        }}
+        style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 }]}
+      >
+        <Ionicons name="play-circle-outline" size={16} color={theme.colors.textSecondary} />
+        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>Replay Tour</Text>
+      </Pressable>
+
       <SubscriptionSection />
 
       <SecuritySection
@@ -237,7 +255,7 @@ function SubscriptionSection() {
   const [showProPaywall, setShowProPaywall] = useState(false)
 
   const planLabel = (() => {
-    if (flags.isComped) return 'Comped account — everything unlocked'
+    if (flags.isComped) return 'Comped account, everything unlocked'
     if (flags.activeProductIds.includes('pro_bundle')) return PRODUCTS.pro_bundle.name
     if (flags.activeProductIds.length > 0) return `${flags.activeProductIds.length} add-on${flags.activeProductIds.length === 1 ? '' : 's'} active`
     return 'Free plan'

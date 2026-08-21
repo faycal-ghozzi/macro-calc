@@ -1,18 +1,37 @@
-import { View, ActivityIndicator } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { View, ActivityIndicator, useWindowDimensions } from 'react-native'
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { isDeletionPending } from '../lib/accountDeletion'
 import { useTheme } from '../theme/ThemeProvider'
+import { useTour } from '../contexts/TourContext'
+import { useTourProgressStore } from '../store/useTourProgressStore'
+import { getFirstLoginTourSteps } from '../lib/tourSteps'
 import { TabNavigator } from './TabNavigator'
 import AuthScreen from '../screens/AuthScreen'
 import AccountPendingDeletionScreen from '../screens/AccountPendingDeletionScreen'
 import { DowngradeStatusModal } from '../screens/DowngradeStatusModal'
+import { TourOverlay } from '../components/TourOverlay'
 
 export function RootNavigator() {
   const { user, loading } = useAuth()
   const { profile, loading: profileLoading } = useProfile()
   const theme = useTheme()
+  const { startFirstLoginTour } = useTour()
+  const hasSeenFirstLoginTour = useTourProgressStore((s) => s.hasSeenFirstLoginTour)
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  const startedRef = useRef(false)
+
+  useEffect(() => {
+    if (startedRef.current) return
+    if (loading || profileLoading) return
+    if (!user || isDeletionPending(profile) || hasSeenFirstLoginTour) return
+    startedRef.current = true
+    startFirstLoginTour(getFirstLoginTourSteps(screenWidth, screenHeight, insets.bottom))
+  }, [loading, profileLoading, user, profile, hasSeenFirstLoginTour, screenWidth, screenHeight, insets.bottom, startFirstLoginTour])
 
   if (loading || (user && profileLoading)) {
     return (
@@ -42,6 +61,7 @@ export function RootNavigator() {
     <NavigationContainer theme={navTheme}>
       {content}
       {user && !deletionPending && <DowngradeStatusModal />}
+      {user && !deletionPending && <TourOverlay />}
     </NavigationContainer>
   )
 }

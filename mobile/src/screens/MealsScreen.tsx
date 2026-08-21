@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Modal, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -6,6 +6,8 @@ import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
 import { EmptyState } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
+import { ErrorState } from '../components/ErrorState'
 import { FoodSearchModal } from '../components/FoodSearchModal'
 import { AddAmountModal } from '../components/AddAmountModal'
 import { ShareQRModal } from '../components/ShareQRModal'
@@ -15,6 +17,8 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useMeals } from '../hooks/useMeals'
 import { useFoodLog } from '../hooks/useFoodLog'
 import { useEntitlements } from '../hooks/useEntitlements'
+import { useTour, TourTarget } from '../contexts/TourContext'
+import { useTourProgressStore } from '../store/useTourProgressStore'
 import type { ProductId } from '../lib/products'
 import { calcMacrosFromAmount, calcMealTotals } from '../lib/macroCalc'
 import { encodeMealToQR, decodeMealFromQR, mealQRToIngredients, MealQRData } from '../lib/mealQR'
@@ -30,11 +34,18 @@ const QR_TYPES: CodeFormat[] = ['qr']
 
 export default function MealsScreen() {
   const theme = useTheme()
-  const { meals, loading, createMeal, updateMeal, deleteMeal, touchMealUsed } = useMeals()
+  const { meals, loading, fetchError, createMeal, updateMeal, deleteMeal, touchMealUsed, refetch } = useMeals()
   const todayStr = new Date().toISOString().split('T')[0]
   const { addFoodLog } = useFoodLog(todayStr)
   const { checkAndIncrementMealCreated, checkAndIncrementQrShare, checkAndIncrementQrReceive } = useEntitlements()
   const [paywallProduct, setPaywallProduct] = useState<ProductId | null>(null)
+  const { showTip } = useTour()
+  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
+
+  useEffect(() => {
+    if (seenFeatureTips.tip_meal_scan) return
+    showTip('tip_meal_scan', { title: 'Import a shared meal', body: 'Scan a MacroTrack meal QR code from someone else to add it to your saved meals.' })
+  }, [seenFeatureTips, showTip])
 
   const [creatingMeal, setCreatingMeal] = useState(false)
   const [mealName, setMealName] = useState('')
@@ -170,10 +181,12 @@ export default function MealsScreen() {
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Saved Meals</Text>
         {!creatingMeal && (
           <View style={styles.headerActions}>
-            <Pressable onPress={() => setShowScanner(true)} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
-              <Ionicons name="scan-outline" size={14} color={theme.colors.textSecondary} />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
-            </Pressable>
+            <TourTarget id="tip_meal_scan">
+              <Pressable onPress={() => setShowScanner(true)} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
+                <Ionicons name="scan-outline" size={14} color={theme.colors.textSecondary} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
+              </Pressable>
+            </TourTarget>
             <Pressable onPress={() => { Haptics.selectionAsync(); setCreatingMeal(true) }} style={[styles.headerBtn, { backgroundColor: theme.colors.accentSoft }]}>
               <Ionicons name="add" size={14} color={theme.colors.accent} />
               <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>New</Text>
@@ -233,9 +246,10 @@ export default function MealsScreen() {
         </Card>
       )}
 
-      {loading && <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 30 }} />}
+      {loading && <LoadingState minHeight={200} />}
+      {!loading && fetchError && <ErrorState message="Couldn't load your meals." onRetry={refetch} />}
 
-      {!loading && meals.length === 0 && !creatingMeal && (
+      {!loading && !fetchError && meals.length === 0 && !creatingMeal && (
         <EmptyState icon="book-outline" title="No saved meals yet" subtitle="Tap New to create your first meal" />
       )}
 
@@ -405,7 +419,7 @@ export default function MealsScreen() {
                 <Ionicons name="close" size={18} color={theme.colors.textTertiary} />
               </Pressable>
             </View>
-            <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginBottom: 6 }}>Meal name — rename or keep as is</Text>
+            <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginBottom: 6 }}>Meal name (rename or keep as is)</Text>
             <TextInput
               value={importName}
               onChangeText={setImportName}

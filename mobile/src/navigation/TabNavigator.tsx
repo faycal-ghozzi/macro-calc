@@ -1,6 +1,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { View, Pressable, StyleSheet, Platform } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated'
 import * as Haptics from '../lib/haptics'
 import { BlurView } from '@react-native-community/blur'
 import DashboardScreen from '../screens/DashboardScreen'
@@ -20,6 +22,31 @@ export type TabParamList = {
 }
 
 const Tab = createBottomTabNavigator<TabParamList>()
+const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable)
+
+function AnimatedTabButton(props: BottomTabBarButtonProps) {
+  const scale = useSharedValue(1)
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+
+  return (
+    <AnimatedPressableBase
+      {...(props as any)}
+      style={[props.style, animatedStyle]}
+      onPressIn={(e) => {
+        scale.value = withTiming(0.92, { duration: 100, easing: Easing.out(Easing.quad) })
+        props.onPressIn?.(e)
+      }}
+      onPressOut={(e) => {
+        scale.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.quad) })
+        props.onPressOut?.(e)
+      }}
+      onPress={(e) => {
+        Haptics.selectionAsync()
+        props.onPress?.(e)
+      }}
+    />
+  )
+}
 
 const ICONS: Record<keyof TabParamList, string> = {
   Dashboard: 'home',
@@ -69,15 +96,7 @@ export function TabNavigator() {
             <Ionicons name={ICONS[route.name as keyof TabParamList]} size={size - 2} color={color} />
           </View>
         ),
-        tabBarButton: (props) => (
-          <Pressable
-            {...(props as any)}
-            onPress={(e) => {
-              Haptics.selectionAsync()
-              props.onPress?.(e)
-            }}
-          />
-        ),
+        tabBarButton: (props) => <AnimatedTabButton {...props} />,
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />

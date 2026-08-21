@@ -107,7 +107,7 @@ export function DowngradeStatusModal() {
           {isPending ? (
             <>
               <Text style={[styles.body, { color: theme.colors.textSecondary }]}>
-                Your plan now includes 1 saved meal and 5 favorites. Choose what to keep active — everything else
+                Your plan now includes 1 saved meal and 5 favorites. Choose what to keep active, and everything else
                 will be archived, not deleted, and comes back if you resubscribe.
                 {daysLeft !== null ? ` If you don't choose within ${daysLeft} day${daysLeft === 1 ? '' : 's'}, we'll automatically keep your most recently used items and archive the rest.` : ''}
               </Text>
@@ -126,7 +126,7 @@ export function DowngradeStatusModal() {
                 ))}
 
                 <Text style={[styles.sectionLabel, { color: theme.colors.textTertiary, marginTop: 12 }]}>
-                  Favorites (choose up to {MAX_ACTIVE_FAVORITES}) — {selectedFavIds.length}/{MAX_ACTIVE_FAVORITES}
+                  Favorites (choose up to {MAX_ACTIVE_FAVORITES}), {selectedFavIds.length}/{MAX_ACTIVE_FAVORITES} selected
                 </Text>
                 {rawFavorites.map((fav) => (
                   <Pressable

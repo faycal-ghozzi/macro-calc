@@ -7,6 +7,9 @@ import { useNavigation } from '@react-navigation/native'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
+import { AnimatedPressable } from '../components/AnimatedPressable'
+import { EmptyState } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
 import { ProgressRing, RingLabel } from '../components/ProgressRing'
 import { MacroBar } from '../components/MacroBar'
 import { useTheme } from '../theme/ThemeProvider'
@@ -86,8 +89,22 @@ export default function DashboardScreen() {
         </Pressable>
       </View>
 
+      {loading ? (
+        <LoadingState minHeight={300} />
+      ) : (
+      <>
       <Animated.View entering={FadeInDown.duration(400)}>
-        <Card style={styles.heroCard}>
+        <Card
+          style={{
+            ...styles.heroCard,
+            borderColor: theme.colors.accent + '30',
+            shadowColor: theme.colors.calories,
+            shadowOpacity: theme.style.shadowOpacity,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 6,
+          }}
+        >
           <ProgressRing size={168} progress={caloriesProgress} color={theme.colors.calories} thickness={14}>
             <RingLabel value={Math.round(netCalories).toString()} label="net kcal" />
           </ProgressRing>
@@ -162,6 +179,12 @@ export default function DashboardScreen() {
         </Pressable>
       )}
 
+      {totals.calories === 0 && (
+        <View style={{ marginTop: 12 }}>
+          <EmptyState icon="restaurant-outline" title="Nothing logged yet" subtitle="Tap a meal below to add your first entry" />
+        </View>
+      )}
+
       <View style={{ marginTop: 16, gap: 8 }}>
         {MEAL_TYPES.map((meal, i) => {
           const items = byMeal(meal)
@@ -194,14 +217,16 @@ export default function DashboardScreen() {
           )
         })}
       </View>
+      </>
+      )}
 
-      <Pressable
+      <AnimatedPressable
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); navigation.navigate('Log', { date: dateStr }) }}
         style={[styles.addButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4 }]}
       >
         <Ionicons name="add" size={20} color={theme.colors.onAccent} />
         <Text style={[styles.addButtonText, { color: theme.colors.onAccent }]}>Add Food</Text>
-      </Pressable>
+      </AnimatedPressable>
     </Screen>
   )
 }

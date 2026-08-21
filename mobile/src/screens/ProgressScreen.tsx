@@ -6,6 +6,7 @@ import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
 import { EmptyState } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
 import { MacroBar } from '../components/MacroBar'
 import { WeightLineChart } from '../components/WeightLineChart'
 import { CalorieBarChart } from '../components/CalorieBarChart'
@@ -160,7 +161,7 @@ export default function ProgressScreen() {
           )}
 
           {wLoading ? (
-            <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 20 }} />
+            <LoadingState minHeight={120} />
           ) : entries.length === 0 ? (
             <EmptyState icon="trending-up-outline" title="No weight entries yet" subtitle="Tap Log to record your first weight" />
           ) : (
@@ -196,7 +197,7 @@ export default function ProgressScreen() {
 
       {(tab === 'weekly' || tab === 'monthly') && (
         rLoading || !report ? (
-          <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 40 }} />
+          <LoadingState minHeight={200} />
         ) : (
           <View style={{ gap: 12 }}>
             <View style={styles.statsGrid}>

@@ -1,28 +1,55 @@
-import { useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { Meal, MealIngredient } from '../types'
 import { useAuth } from '../contexts/AuthContext'
 import { calcMealTotals } from '../lib/macroCalc'
 
-export function useMeals() {
+interface MealsContextType {
+  meals: Meal[]
+  loading: boolean
+  fetchError: string | null
+  createMeal: (name: string, ingredients: Omit<MealIngredient, 'id' | 'meal_id'>[]) => Promise<{ error: Error | null; meal?: Meal }>
+  updateMeal: (id: string, name: string, ingredients: Omit<MealIngredient, 'id' | 'meal_id'>[]) => Promise<{ error: Error | null }>
+  deleteMeal: (id: string) => Promise<{ error: Error | null }>
+  touchMealUsed: (id: string) => Promise<void>
+  refetch: () => Promise<void>
+}
+
+const MealsContext = createContext<MealsContextType>({
+  meals: [],
+  loading: true,
+  fetchError: null,
+  createMeal: async () => ({ error: new Error('Not logged in') }),
+  updateMeal: async () => ({ error: new Error('Not logged in') }),
+  deleteMeal: async () => ({ error: new Error('Not logged in') }),
+  touchMealUsed: async () => {},
+  refetch: async () => {},
+})
+
+// Fetched once here and shared via context, rather than every screen/modal
+// that calls useMeals() re-fetching independently.
+export function MealsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!user) { setMeals([]); setLoading(false); return }
-    fetchMeals()
-  }, [user])
-
-  async function fetchMeals() {
+  const fetchMeals = useCallback(async () => {
     if (!user) return
     setLoading(true)
-    const { data: mealsData } = await supabase
+    setFetchError(null)
+    const { data: mealsData, error } = await supabase
       .from('meals')
       .select('*, meal_ingredients(*)')
       .eq('user_id', user.id)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
+
+    if (error) {
+      setFetchError(error.message)
+      setLoading(false)
+      return
+    }
 
     const enriched = (mealsData ?? []).map((m: Meal & { meal_ingredients: MealIngredient[] }) => ({
       ...m,
@@ -31,9 +58,14 @@ export function useMeals() {
     }))
     setMeals(enriched)
     setLoading(false)
-  }
+  }, [user])
 
-  async function createMeal(name: string, ingredients: Omit<MealIngredient, 'id' | 'meal_id'>[]) {
+  useEffect(() => {
+    if (!user) { setMeals([]); setLoading(false); return }
+    fetchMeals()
+  }, [user, fetchMeals])
+
+  const createMeal = useCallback(async (name: string, ingredients: Omit<MealIngredient, 'id' | 'meal_id'>[]) => {
     if (!user) return { error: new Error('Not logged in') }
     const { data: meal, error: mealErr } = await supabase
       .from('meals')
@@ -51,9 +83,9 @@ export function useMeals() {
 
     await fetchMeals()
     return { error: null, meal }
-  }
+  }, [user, fetchMeals])
 
-  async function updateMeal(id: string, name: string, ingredients: Omit<MealIngredient, 'id' | 'meal_id'>[]) {
+  const updateMeal = useCallback(async (id: string, name: string, ingredients: Omit<MealIngredient, 'id' | 'meal_id'>[]) => {
     if (!user) return { error: new Error('Not logged in') }
     const { error: nameErr } = await supabase.from('meals').update({ name }).eq('id', id)
     if (nameErr) return { error: nameErr }
@@ -70,17 +102,24 @@ export function useMeals() {
 
     await fetchMeals()
     return { error: null }
-  }
+  }, [user, fetchMeals])
 
-  async function deleteMeal(id: string) {
+  const deleteMeal = useCallback(async (id: string) => {
     const { error } = await supabase.from('meals').delete().eq('id', id)
     if (!error) setMeals((prev) => prev.filter((m) => m.id !== id))
     return { error }
-  }
+  }, [])
 
-  async function touchMealUsed(id: string) {
+  const touchMealUsed = useCallback(async (id: string) => {
     await supabase.from('meals').update({ last_used_at: new Date().toISOString() }).eq('id', id)
-  }
+  }, [])
 
-  return { meals, loading, createMeal, updateMeal, deleteMeal, touchMealUsed, refetch: fetchMeals }
+  const value = useMemo(
+    () => ({ meals, loading, fetchError, createMeal, updateMeal, deleteMeal, touchMealUsed, refetch: fetchMeals }),
+    [meals, loading, fetchError, createMeal, updateMeal, deleteMeal, touchMealUsed, fetchMeals]
+  )
+
+  return <MealsContext.Provider value={value}>{children}</MealsContext.Provider>
 }
+
+export const useMeals = () => useContext(MealsContext)

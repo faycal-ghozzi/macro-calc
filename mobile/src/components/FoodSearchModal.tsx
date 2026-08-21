@@ -5,11 +5,15 @@ import * as Haptics from '../lib/haptics'
 import { ModalScreen } from './ModalScreen'
 import { CameraScannerModal } from './CameraScannerModal'
 import { EmptyState } from './EmptyState'
+import { LoadingState } from './LoadingState'
+import { ErrorState } from './ErrorState'
 import { PaywallModal } from './PaywallModal'
 import { useTheme } from '../theme/ThemeProvider'
 import { useFavorites } from '../hooks/useFavorites'
 import { useMeals } from '../hooks/useMeals'
 import { useEntitlements } from '../hooks/useEntitlements'
+import { useTour, TourTarget } from '../contexts/TourContext'
+import { useTourProgressStore } from '../store/useTourProgressStore'
 import { searchCommonFoods, FOOD_CATEGORIES } from '../lib/commonFoods'
 import { fetchProductByBarcode, searchProducts } from '../lib/openfoodfacts'
 import type { FoodItem, Meal } from '../types'
@@ -65,10 +69,12 @@ function FoodCard({ food, onSelect, isFav, onToggleFav }: {
 
 export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: FoodSearchModalProps) {
   const theme = useTheme()
-  const { favorites, loading: favLoading, isFavorite, toggleFavorite, touchFavoriteUsed } = useFavorites()
-  const { meals, loading: mealsLoading } = useMeals()
+  const { favorites, loading: favLoading, fetchError: favError, isFavorite, toggleFavorite, touchFavoriteUsed, refetch: refetchFavorites } = useFavorites()
+  const { meals, loading: mealsLoading, fetchError: mealsError, refetch: refetchMeals } = useMeals()
   const { checkAndIncrementFavoriteCreated } = useEntitlements()
   const [favoritePaywall, setFavoritePaywall] = useState(false)
+  const { showTip } = useTour()
+  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
 
   const [activeTab, setActiveTab] = useState<Tab>('favorites')
   const [query, setQuery] = useState('')
@@ -84,6 +90,16 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
   useEffect(() => {
     if (visible && !favLoading && favorites.length === 0) setActiveTab('search')
   }, [visible, favLoading, favorites.length])
+
+  useEffect(() => {
+    if (!visible || activeTab !== 'barcode' || seenFeatureTips.tip_barcode_scan) return
+    showTip('tip_barcode_scan', { title: 'Scan a barcode', body: 'Point your camera at any product barcode to log it instantly.' })
+  }, [visible, activeTab, seenFeatureTips, showTip])
+
+  useEffect(() => {
+    if (!visible || activeTab !== 'search' || results.length === 0 || seenFeatureTips.tip_fav_heart) return
+    showTip('tip_fav_heart', { title: 'Save favorites', body: 'Tap the heart on any food to save it for quick re-logging later.' })
+  }, [visible, activeTab, results.length, seenFeatureTips, showTip])
 
   useEffect(() => {
     if (activeTab !== 'search') return
@@ -179,7 +195,9 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
             )}
             ListEmptyComponent={
               favLoading ? (
-                <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 40 }} />
+                <LoadingState minHeight={200} />
+              ) : favError ? (
+                <ErrorState message="Couldn't load your favorites." onRetry={refetchFavorites} />
               ) : (
                 <EmptyState icon="star-outline" title="No saved foods yet" subtitle="Tap the heart on any food to save it here" />
               )
@@ -224,8 +242,14 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
               data={results}
               keyExtractor={(f, i) => `${f.name}-${i}`}
               contentContainerStyle={styles.listContent}
-              renderItem={({ item }) => (
-                <FoodCard food={item} onSelect={handleSelectFood} isFav={isFavorite(item)} onToggleFav={handleToggleFav} />
+              renderItem={({ item, index }) => (
+                index === 0 ? (
+                  <TourTarget id="tip_fav_heart">
+                    <FoodCard food={item} onSelect={handleSelectFood} isFav={isFavorite(item)} onToggleFav={handleToggleFav} />
+                  </TourTarget>
+                ) : (
+                  <FoodCard food={item} onSelect={handleSelectFood} isFav={isFavorite(item)} onToggleFav={handleToggleFav} />
+                )
               )}
               ListEmptyComponent={
                 !searching && query.trim() ? (
@@ -238,13 +262,15 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
 
         {activeTab === 'barcode' && (
           <ScrollView contentContainerStyle={styles.barcodeContent}>
-            <Pressable
-              onPress={() => setShowScanner(true)}
-              style={[styles.scanButton, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent + '50', borderRadius: theme.style.cardRadius - 4 }]}
-            >
-              <Ionicons name="barcode-outline" size={24} color={theme.colors.accent} />
-              <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 14 }}>Open Camera Scanner</Text>
-            </Pressable>
+            <TourTarget id="tip_barcode_scan">
+              <Pressable
+                onPress={() => setShowScanner(true)}
+                style={[styles.scanButton, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent + '50', borderRadius: theme.style.cardRadius - 4 }]}
+              >
+                <Ionicons name="barcode-outline" size={24} color={theme.colors.accent} />
+                <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 14 }}>Open Camera Scanner</Text>
+              </Pressable>
+            </TourTarget>
 
             <View style={styles.dividerRow}>
               <View style={[styles.divider, { backgroundColor: theme.colors.cardBorder }]} />
@@ -309,7 +335,9 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
             }}
             ListEmptyComponent={
               mealsLoading ? (
-                <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 40 }} />
+                <LoadingState minHeight={200} />
+              ) : mealsError ? (
+                <ErrorState message="Couldn't load your meals." onRetry={refetchMeals} />
               ) : (
                 <EmptyState icon="book-outline" title="No saved meals yet" subtitle="Create meals on the Meals tab" />
               )

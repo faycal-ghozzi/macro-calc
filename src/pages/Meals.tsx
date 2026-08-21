@@ -417,7 +417,7 @@ export default function Meals() {
               </button>
             </div>
             <div className="space-y-1 shrink-0">
-              <label htmlFor="import-name" className="text-xs text-gray-500">Meal name — rename or keep as is</label>
+              <label htmlFor="import-name" className="text-xs text-gray-500">Meal name (rename or keep as is)</label>
               <input
                 id="import-name"
                 type="text"

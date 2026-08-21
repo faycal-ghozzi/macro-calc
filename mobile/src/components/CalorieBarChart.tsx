@@ -1,11 +1,37 @@
+import { useEffect } from 'react'
 import { View, Text } from 'react-native'
 import Svg, { Rect, Line as SvgLine, G } from 'react-native-svg'
+import Animated, { useAnimatedProps, useSharedValue, withTiming, withDelay, Easing } from 'react-native-reanimated'
 import { useTheme } from '../theme/ThemeProvider'
+
+const AnimatedRect = Animated.createAnimatedComponent(Rect)
 
 interface Day {
   date: string
   consumed: number
   burned: number
+}
+
+function AnimatedBar({ x, bottom, targetHeight, width, fill, delay }: {
+  x: number
+  bottom: number
+  targetHeight: number
+  width: number
+  fill: string
+  delay: number
+}) {
+  const h = useSharedValue(0)
+
+  useEffect(() => {
+    h.value = withDelay(delay, withTiming(targetHeight, { duration: 500, easing: Easing.out(Easing.cubic) }))
+  }, [targetHeight, delay])
+
+  const animatedProps = useAnimatedProps(() => ({
+    height: h.value,
+    y: bottom - h.value,
+  }))
+
+  return <AnimatedRect x={x} width={width} rx={2} fill={fill} animatedProps={animatedProps} />
 }
 
 export function CalorieBarChart({ data, target, height = 150 }: { data: Day[]; target?: number; height?: number }) {
@@ -15,6 +41,7 @@ export function CalorieBarChart({ data, target, height = 150 }: { data: Day[]; t
   const max = Math.max(target ?? 0, ...data.map((d) => Math.max(d.consumed, d.burned)), 100) * 1.1
   const groupWidth = (width - padding * 2) / data.length
   const barWidth = Math.min(groupWidth * 0.32, 10)
+  const bottom = height - padding
 
   return (
     <View>
@@ -33,22 +60,22 @@ export function CalorieBarChart({ data, target, height = 150 }: { data: Day[]; t
           const burnedH = (d.burned / max) * (height - padding * 2)
           return (
             <G key={d.date}>
-              <Rect
+              <AnimatedBar
                 x={groupX - barWidth - 1}
-                y={height - padding - consumedH}
+                bottom={bottom}
+                targetHeight={consumedH}
                 width={barWidth}
-                height={consumedH}
-                rx={2}
                 fill={theme.colors.accent}
+                delay={i * 40}
               />
               {d.burned > 0 && (
-                <Rect
+                <AnimatedBar
                   x={groupX + 1}
-                  y={height - padding - burnedH}
+                  bottom={bottom}
+                  targetHeight={burnedH}
                   width={barWidth}
-                  height={burnedH}
-                  rx={2}
                   fill={theme.colors.calories}
+                  delay={i * 40 + 60}
                 />
               )}
             </G>
