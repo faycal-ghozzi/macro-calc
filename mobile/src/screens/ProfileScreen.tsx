@@ -5,11 +5,16 @@ import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
 import { ThemePicker } from '../components/ThemePicker'
+import { PaywallModal } from '../components/PaywallModal'
+import { BundleNudgeBanner } from '../components/BundleNudgeBanner'
 import { useTheme } from '../theme/ThemeProvider'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../contexts/AuthContext'
+import { useEntitlements } from '../hooks/useEntitlements'
+import { useDowngradeUiStore } from '../store/useDowngradeUiStore'
 import { supabase } from '../lib/supabase'
 import { calculateMacroTargets } from '../lib/macroCalc'
+import { PRODUCTS } from '../lib/products'
 import type { Profile as ProfileType } from '../types'
 
 const GOALS = [
@@ -214,12 +219,67 @@ export default function ProfileScreen() {
         <ThemePicker />
       </Card>
 
+      <SubscriptionSection />
+
       <SecuritySection
         email={user?.email ?? ''}
         onSignOut={signOut}
         onRequestDeletion={() => updateProfile({ deletion_requested_at: new Date().toISOString() }).then(signOut)}
       />
     </Screen>
+  )
+}
+
+function SubscriptionSection() {
+  const theme = useTheme()
+  const { flags } = useEntitlements()
+  const setDismissed = useDowngradeUiStore((s) => s.setDismissed)
+  const [showProPaywall, setShowProPaywall] = useState(false)
+
+  const planLabel = (() => {
+    if (flags.isComped) return 'Comped account — everything unlocked'
+    if (flags.activeProductIds.includes('pro_bundle')) return PRODUCTS.pro_bundle.name
+    if (flags.activeProductIds.length > 0) return `${flags.activeProductIds.length} add-on${flags.activeProductIds.length === 1 ? '' : 's'} active`
+    return 'Free plan'
+  })()
+
+  return (
+    <Card style={{ gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Ionicons name="card-outline" size={15} color={theme.colors.textTertiary} />
+        <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Subscription</Text>
+      </View>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary }}>{planLabel}</Text>
+
+      <BundleNudgeBanner activeProductIds={flags.activeProductIds} onPress={() => setShowProPaywall(true)} />
+
+      {!flags.isComped && !flags.activeProductIds.includes('pro_bundle') && (
+        <Pressable
+          onPress={() => setShowProPaywall(true)}
+          style={[styles.secondaryButton, { backgroundColor: theme.colors.accentSoft, borderRadius: theme.style.cardRadius - 8 }]}
+        >
+          <Ionicons name="sparkles-outline" size={14} color={theme.colors.accent} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>Upgrade to {PRODUCTS.pro_bundle.name}</Text>
+        </Pressable>
+      )}
+
+      {flags.isSlotLocked && (
+        <Pressable
+          onPress={() => setDismissed(false)}
+          style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 }]}
+        >
+          <Ionicons name="list-outline" size={14} color={theme.colors.textSecondary} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>Review active items</Text>
+        </Pressable>
+      )}
+
+      <PaywallModal
+        visible={showProPaywall}
+        productId="pro_bundle"
+        headline="Unlock everything"
+        onClose={() => setShowProPaywall(false)}
+      />
+    </Card>
   )
 }
 

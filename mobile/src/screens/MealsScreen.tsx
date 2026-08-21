@@ -10,9 +10,12 @@ import { FoodSearchModal } from '../components/FoodSearchModal'
 import { AddAmountModal } from '../components/AddAmountModal'
 import { ShareQRModal } from '../components/ShareQRModal'
 import { CameraScannerModal } from '../components/CameraScannerModal'
+import { PaywallModal } from '../components/PaywallModal'
 import { useTheme } from '../theme/ThemeProvider'
 import { useMeals } from '../hooks/useMeals'
 import { useFoodLog } from '../hooks/useFoodLog'
+import { useEntitlements } from '../hooks/useEntitlements'
+import type { ProductId } from '../lib/products'
 import { calcMacrosFromAmount, calcMealTotals } from '../lib/macroCalc'
 import { encodeMealToQR, decodeMealFromQR, mealQRToIngredients, MealQRData } from '../lib/mealQR'
 import type { FoodItem, Meal, MealIngredient } from '../types'
@@ -27,9 +30,11 @@ const QR_TYPES: CodeFormat[] = ['qr']
 
 export default function MealsScreen() {
   const theme = useTheme()
-  const { meals, loading, createMeal, updateMeal, deleteMeal } = useMeals()
+  const { meals, loading, createMeal, updateMeal, deleteMeal, touchMealUsed } = useMeals()
   const todayStr = new Date().toISOString().split('T')[0]
   const { addFoodLog } = useFoodLog(todayStr)
+  const { checkAndIncrementMealCreated, checkAndIncrementQrShare, checkAndIncrementQrReceive } = useEntitlements()
+  const [paywallProduct, setPaywallProduct] = useState<ProductId | null>(null)
 
   const [creatingMeal, setCreatingMeal] = useState(false)
   const [mealName, setMealName] = useState('')
@@ -92,6 +97,8 @@ export default function MealsScreen() {
 
   async function handleSaveMeal() {
     if (!mealName.trim() || ingredients.length === 0) return
+    const allowed = await checkAndIncrementMealCreated()
+    if (!allowed) { setPaywallProduct('unlimited_meals_favorites'); return }
     setSaving(true)
     await createMeal(mealName.trim(), ingredients)
     setSaving(false)
@@ -113,6 +120,7 @@ export default function MealsScreen() {
   async function handleAddToToday(meal: Meal) {
     if (!meal.ingredients || meal.ingredients.length === 0) return
     setAddingMealId(meal.id)
+    touchMealUsed(meal.id)
     const ings = meal.ingredients
     await addFoodLog({
       logged_at: todayStr,
@@ -131,6 +139,11 @@ export default function MealsScreen() {
     setAddingMealId(null)
   }
 
+  async function handleShareMeal(meal: Meal) {
+    if (!(await checkAndIncrementQrShare())) { setPaywallProduct('qr_sharing_unlimited'); return }
+    setQRMeal(meal)
+  }
+
   function handleQRScan(text: string) {
     setShowScanner(false)
     const data = decodeMealFromQR(text)
@@ -139,6 +152,8 @@ export default function MealsScreen() {
 
   async function handleImportMeal() {
     if (!importingMeal || !importName.trim()) return
+    if (!(await checkAndIncrementQrReceive())) { setPaywallProduct('qr_sharing_unlimited'); return }
+    if (!(await checkAndIncrementMealCreated())) { setPaywallProduct('unlimited_meals_favorites'); return }
     setImportSaving(true)
     await createMeal(importName.trim(), mealQRToIngredients(importingMeal))
     setImportSaving(false)
@@ -311,7 +326,7 @@ export default function MealsScreen() {
                   <Pressable onPress={() => startEdit(meal)} style={styles.iconAction}>
                     <Ionicons name="pencil" size={16} color={theme.colors.textTertiary} />
                   </Pressable>
-                  <Pressable onPress={() => setQRMeal(meal)} style={styles.iconAction}>
+                  <Pressable onPress={() => handleShareMeal(meal)} style={styles.iconAction}>
                     <Ionicons name="qr-code-outline" size={17} color={theme.colors.textTertiary} />
                   </Pressable>
                   <Pressable onPress={() => { Haptics.selectionAsync(); deleteMeal(meal.id) }} style={styles.iconAction}>
@@ -418,6 +433,13 @@ export default function MealsScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      <PaywallModal
+        visible={!!paywallProduct}
+        productId={paywallProduct}
+        headline={paywallProduct === 'unlimited_meals_favorites' ? 'Save unlimited meals' : 'Share unlimited meals & logs'}
+        onClose={() => setPaywallProduct(null)}
+      />
     </Screen>
   )
 }

@@ -7,6 +7,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { TabNavigator } from './TabNavigator'
 import AuthScreen from '../screens/AuthScreen'
 import AccountPendingDeletionScreen from '../screens/AccountPendingDeletionScreen'
+import { DowngradeStatusModal } from '../screens/DowngradeStatusModal'
 
 export function RootNavigator() {
   const { user, loading } = useAuth()
@@ -33,12 +34,14 @@ export function RootNavigator() {
     },
   }
 
+  const deletionPending = user && isDeletionPending(profile)
   let content = <AuthScreen />
-  if (user) content = isDeletionPending(profile) ? <AccountPendingDeletionScreen /> : <TabNavigator />
+  if (user) content = deletionPending ? <AccountPendingDeletionScreen /> : <TabNavigator />
 
   return (
     <NavigationContainer theme={navTheme}>
       {content}
+      {user && !deletionPending && <DowngradeStatusModal />}
     </NavigationContainer>
   )
 }

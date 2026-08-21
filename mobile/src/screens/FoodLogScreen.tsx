@@ -14,9 +14,12 @@ import { ExerciseModal } from '../components/ExerciseModal'
 import { EditFoodLogModal } from '../components/EditFoodLogModal'
 import { ShareQRModal } from '../components/ShareQRModal'
 import { CameraScannerModal } from '../components/CameraScannerModal'
+import { PaywallModal } from '../components/PaywallModal'
 import { useTheme } from '../theme/ThemeProvider'
 import { useFoodLog } from '../hooks/useFoodLog'
 import { useExerciseLog } from '../hooks/useExerciseLog'
+import { useMeals } from '../hooks/useMeals'
+import { useEntitlements } from '../hooks/useEntitlements'
 import { calcMacrosFromAmount } from '../lib/macroCalc'
 import { encodeLogToQR, decodeLogFromQR, logEntryMealType, LogQRData } from '../lib/logQR'
 import type { TabParamList } from '../navigation/TabNavigator'
@@ -45,6 +48,9 @@ export default function FoodLogScreen() {
 
   const { logs, byMeal, addFoodLog, updateFoodLog, deleteFoodLog } = useFoodLog(dateStr)
   const { logs: exerciseLogs, totalBurned, addExerciseLog, deleteExerciseLog } = useExerciseLog(dateStr)
+  const { touchMealUsed } = useMeals()
+  const { checkAndIncrementQrShare, checkAndIncrementQrReceive } = useEntitlements()
+  const [paywallProduct, setPaywallProduct] = useState<'qr_sharing_unlimited' | null>(null)
 
   const [pendingMeal, setPendingMeal] = useState<MealType | null>(null)
   const [showSearch, setShowSearch] = useState(false)
@@ -79,6 +85,7 @@ export default function FoodLogScreen() {
   async function handleMealSelect(meal: Meal) {
     if (!meal.ingredients || !pendingMeal) return
     setShowSearch(false)
+    touchMealUsed(meal.id)
     const ings = meal.ingredients
     await addFoodLog({
       logged_at: dateStr,
@@ -114,6 +121,11 @@ export default function FoodLogScreen() {
     setPendingMeal(null)
   }
 
+  async function handleShareLog() {
+    if (!(await checkAndIncrementQrShare())) { setPaywallProduct('qr_sharing_unlimited'); return }
+    setShowShareQR(true)
+  }
+
   function handleLogScan(text: string) {
     setShowScanner(false)
     const data = decodeLogFromQR(text)
@@ -122,6 +134,7 @@ export default function FoodLogScreen() {
 
   async function handleImportLog() {
     if (!importingLog) return
+    if (!(await checkAndIncrementQrReceive())) { setPaywallProduct('qr_sharing_unlimited'); return }
     setImportSaving(true)
     for (const entry of importingLog.e) {
       await addFoodLog({
@@ -156,7 +169,7 @@ export default function FoodLogScreen() {
             <Ionicons name="scan-outline" size={14} color={theme.colors.textSecondary} />
             <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
           </Pressable>
-          <Pressable onPress={() => setShowShareQR(true)} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
+          <Pressable onPress={handleShareLog} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
             <Ionicons name="qr-code-outline" size={14} color={theme.colors.textSecondary} />
             <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Share</Text>
           </Pressable>
@@ -401,6 +414,13 @@ export default function FoodLogScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      <PaywallModal
+        visible={!!paywallProduct}
+        productId={paywallProduct}
+        headline="Share unlimited meals & logs"
+        onClose={() => setPaywallProduct(null)}
+      />
     </Screen>
   )
 }

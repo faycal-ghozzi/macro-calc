@@ -9,10 +9,12 @@ import { EmptyState } from '../components/EmptyState'
 import { MacroBar } from '../components/MacroBar'
 import { WeightLineChart } from '../components/WeightLineChart'
 import { CalorieBarChart } from '../components/CalorieBarChart'
+import { PaywallModal } from '../components/PaywallModal'
 import { useTheme } from '../theme/ThemeProvider'
 import { useWeightLog } from '../hooks/useWeightLog'
 import { useReports } from '../hooks/useReports'
 import { useProfile } from '../hooks/useProfile'
+import { useEntitlements } from '../hooks/useEntitlements'
 import { calculateMacroTargets } from '../lib/macroCalc'
 
 type Tab = 'weekly' | 'monthly' | 'weight'
@@ -23,6 +25,8 @@ export default function ProgressScreen() {
   const { entries, loading: wLoading, addEntry, deleteEntry, latestEntry, totalChange } = useWeightLog()
   const { weekly, monthly, loading: rLoading } = useReports()
   const { profile } = useProfile()
+  const { flags } = useEntitlements()
+  const [showReportsPaywall, setShowReportsPaywall] = useState(false)
   const targets = profile ? calculateMacroTargets(profile) : null
 
   const [weight, setWeight] = useState('')
@@ -67,7 +71,11 @@ export default function ProgressScreen() {
         {(['weekly', 'monthly', 'weight'] as Tab[]).map((t) => (
           <Pressable
             key={t}
-            onPress={() => { Haptics.selectionAsync(); setTab(t) }}
+            onPress={() => {
+              Haptics.selectionAsync()
+              if (t === 'monthly' && !flags.hasMonthlyReports) { setShowReportsPaywall(true); return }
+              setTab(t)
+            }}
             style={[styles.tabButton, { borderRadius: theme.style.cardRadius - 10 }, tab === t && { backgroundColor: theme.colors.accent }]}
           >
             <Text style={{ fontSize: 12, fontWeight: '700', color: tab === t ? theme.colors.onAccent : theme.colors.textSecondary }}>
@@ -263,6 +271,13 @@ export default function ProgressScreen() {
           </View>
         )
       )}
+
+      <PaywallModal
+        visible={showReportsPaywall}
+        productId="advanced_reports"
+        headline="Unlock monthly trends"
+        onClose={() => setShowReportsPaywall(false)}
+      />
     </Screen>
   )
 }

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { FoodItem } from '../types'
 
-interface FavoriteRow {
+export interface FavoriteRow {
   id: string
   food_name: string
   barcode?: string
@@ -16,6 +16,7 @@ interface FavoriteRow {
   piece_weight_g?: number
   category?: string
   source: string
+  last_used_at?: string
 }
 
 function rowToFoodItem(row: FavoriteRow): FoodItem {
@@ -51,6 +52,7 @@ export function useFavorites() {
       .from('favorite_foods')
       .select('*')
       .eq('user_id', user.id)
+      .eq('is_archived', false)
       .order('created_at', { ascending: false })
     setRows((data as FavoriteRow[]) ?? [])
     setLoading(false)
@@ -110,5 +112,11 @@ export function useFavorites() {
     else await addFavorite(food)
   }
 
-  return { favorites, loading, isFavorite, toggleFavorite }
+  async function touchFavoriteUsed(food: FoodItem) {
+    let query = supabase.from('favorite_foods').update({ last_used_at: new Date().toISOString() })
+    query = food.barcode ? query.eq('barcode', food.barcode) : query.eq('food_name', food.name)
+    if (user) await query.eq('user_id', user.id)
+  }
+
+  return { favorites, rawFavorites: rows, loading, isFavorite, toggleFavorite, touchFavoriteUsed, refetch: fetch }
 }

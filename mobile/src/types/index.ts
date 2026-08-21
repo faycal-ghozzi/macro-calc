@@ -10,6 +10,22 @@ export interface Profile {
   deletion_requested_at: string | null
 }
 
+export interface UserEntitlements {
+  user_id: string
+  is_comped: boolean
+  comped_reason: string | null
+  comped_until: string | null
+  meals_created_lifetime: number
+  favorites_created_lifetime: number
+  qr_shares_lifetime: number
+  qr_receives_lifetime: number
+  active_product_ids: string[]
+  meals_slot_locked_at: string | null
+  favorites_slot_locked_at: string | null
+  downgrade_grace_expires_at: string | null
+  updated_at: string
+}
+
 export interface WeightEntry {
   id: string
   user_id: string
@@ -69,6 +85,7 @@ export interface Meal {
   user_id: string
   name: string
   created_at: string
+  last_used_at?: string
   ingredients?: MealIngredient[]
 }
 

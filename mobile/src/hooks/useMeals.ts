@@ -21,6 +21,7 @@ export function useMeals() {
       .from('meals')
       .select('*, meal_ingredients(*)')
       .eq('user_id', user.id)
+      .eq('is_archived', false)
       .order('created_at', { ascending: false })
 
     const enriched = (mealsData ?? []).map((m: Meal & { meal_ingredients: MealIngredient[] }) => ({
@@ -77,5 +78,9 @@ export function useMeals() {
     return { error }
   }
 
-  return { meals, loading, createMeal, updateMeal, deleteMeal, refetch: fetchMeals }
+  async function touchMealUsed(id: string) {
+    await supabase.from('meals').update({ last_used_at: new Date().toISOString() }).eq('id', id)
+  }
+
+  return { meals, loading, createMeal, updateMeal, deleteMeal, touchMealUsed, refetch: fetchMeals }
 }

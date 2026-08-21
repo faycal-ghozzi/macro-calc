@@ -5,9 +5,11 @@ import * as Haptics from '../lib/haptics'
 import { ModalScreen } from './ModalScreen'
 import { CameraScannerModal } from './CameraScannerModal'
 import { EmptyState } from './EmptyState'
+import { PaywallModal } from './PaywallModal'
 import { useTheme } from '../theme/ThemeProvider'
 import { useFavorites } from '../hooks/useFavorites'
 import { useMeals } from '../hooks/useMeals'
+import { useEntitlements } from '../hooks/useEntitlements'
 import { searchCommonFoods, FOOD_CATEGORIES } from '../lib/commonFoods'
 import { fetchProductByBarcode, searchProducts } from '../lib/openfoodfacts'
 import type { FoodItem, Meal } from '../types'
@@ -63,8 +65,10 @@ function FoodCard({ food, onSelect, isFav, onToggleFav }: {
 
 export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: FoodSearchModalProps) {
   const theme = useTheme()
-  const { favorites, loading: favLoading, isFavorite, toggleFavorite } = useFavorites()
+  const { favorites, loading: favLoading, isFavorite, toggleFavorite, touchFavoriteUsed } = useFavorites()
   const { meals, loading: mealsLoading } = useMeals()
+  const { checkAndIncrementFavoriteCreated } = useEntitlements()
+  const [favoritePaywall, setFavoritePaywall] = useState(false)
 
   const [activeTab, setActiveTab] = useState<Tab>('favorites')
   const [query, setQuery] = useState('')
@@ -103,6 +107,18 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
       setSearching(false)
     }, 400)
   }, [query, selectedCategory, activeTab])
+
+  function handleSelectFood(food: FoodItem) {
+    if (isFavorite(food)) touchFavoriteUsed(food)
+    onSelect(food)
+  }
+
+  async function handleToggleFav(food: FoodItem) {
+    if (isFavorite(food)) { await toggleFavorite(food); return }
+    const allowed = await checkAndIncrementFavoriteCreated()
+    if (!allowed) { setFavoritePaywall(true); return }
+    await toggleFavorite(food)
+  }
 
   async function handleBarcodeSubmit() {
     if (!barcodeInput.trim()) return
@@ -159,7 +175,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
             keyExtractor={(f, i) => f.barcode ?? `${f.name}-${i}`}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => (
-              <FoodCard food={item} onSelect={onSelect} isFav={true} onToggleFav={toggleFavorite} />
+              <FoodCard food={item} onSelect={handleSelectFood} isFav={true} onToggleFav={handleToggleFav} />
             )}
             ListEmptyComponent={
               favLoading ? (
@@ -209,7 +225,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
               keyExtractor={(f, i) => `${f.name}-${i}`}
               contentContainerStyle={styles.listContent}
               renderItem={({ item }) => (
-                <FoodCard food={item} onSelect={onSelect} isFav={isFavorite(item)} onToggleFav={toggleFavorite} />
+                <FoodCard food={item} onSelect={handleSelectFood} isFav={isFavorite(item)} onToggleFav={handleToggleFav} />
               )}
               ListEmptyComponent={
                 !searching && query.trim() ? (
@@ -257,7 +273,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
             {barcodeResult && (
               <View style={{ width: '100%', marginTop: 8 }}>
                 <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginBottom: 8 }}>Found:</Text>
-                <FoodCard food={barcodeResult} onSelect={onSelect} isFav={isFavorite(barcodeResult)} onToggleFav={toggleFavorite} />
+                <FoodCard food={barcodeResult} onSelect={handleSelectFood} isFav={isFavorite(barcodeResult)} onToggleFav={handleToggleFav} />
               </View>
             )}
           </ScrollView>
@@ -310,6 +326,13 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
         shape="wide"
         onScan={handleScan}
         onClose={() => setShowScanner(false)}
+      />
+
+      <PaywallModal
+        visible={favoritePaywall}
+        productId="unlimited_meals_favorites"
+        headline="Save unlimited favorites"
+        onClose={() => setFavoritePaywall(false)}
       />
     </>
   )
