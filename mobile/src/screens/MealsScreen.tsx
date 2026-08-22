@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Modal, ScrollView } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import * as Haptics from '../lib/haptics'
@@ -42,9 +42,11 @@ export default function MealsScreen() {
   const { showTip } = useTour()
   const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
 
+  const mealScanTipAttempted = useRef(false)
   useEffect(() => {
-    if (seenFeatureTips.tip_meal_scan) return
-    showTip('tip_meal_scan', { title: 'Import a shared meal', body: 'Scan a MacroTrack meal QR code from someone else to add it to your saved meals.' })
+    if (seenFeatureTips.tip_meal_scan || mealScanTipAttempted.current) return
+    mealScanTipAttempted.current = true
+    showTip('tip_meal_scan', { title: 'Copy a meal', body: "This scan is for copying someone else's saved meal, different from the daily-log scan on the Log tab." })
   }, [seenFeatureTips, showTip])
 
   const [creatingMeal, setCreatingMeal] = useState(false)
@@ -111,8 +113,13 @@ export default function MealsScreen() {
     const allowed = await checkAndIncrementMealCreated()
     if (!allowed) { setPaywallProduct('unlimited_meals_favorites'); return }
     setSaving(true)
-    await createMeal(mealName.trim(), ingredients)
+    const { error } = await createMeal(mealName.trim(), ingredients)
     setSaving(false)
+    if (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      Alert.alert("Couldn't save meal", error.message)
+      return
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     setCreatingMeal(false)
     setMealName('')
@@ -187,10 +194,12 @@ export default function MealsScreen() {
                 <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
               </Pressable>
             </TourTarget>
-            <Pressable onPress={() => { Haptics.selectionAsync(); setCreatingMeal(true) }} style={[styles.headerBtn, { backgroundColor: theme.colors.accentSoft }]}>
-              <Ionicons name="add" size={14} color={theme.colors.accent} />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>New</Text>
-            </Pressable>
+            <TourTarget id="tip_meal_new">
+              <Pressable onPress={() => { Haptics.selectionAsync(); setCreatingMeal(true) }} style={[styles.headerBtn, { backgroundColor: theme.colors.accentSoft }]}>
+                <Ionicons name="add" size={14} color={theme.colors.accent} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>New</Text>
+              </Pressable>
+            </TourTarget>
           </View>
         )}
       </View>

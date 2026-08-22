@@ -32,13 +32,22 @@ interface FoodSearchModalProps {
 
 type Tab = 'favorites' | 'search' | 'barcode' | 'meals'
 
-function FoodCard({ food, onSelect, isFav, onToggleFav }: {
+function FoodCard({ food, onSelect, isFav, onToggleFav, highlightFavButton }: {
   food: FoodItem
   onSelect: (food: FoodItem) => void
   isFav: boolean
   onToggleFav: (food: FoodItem) => void
+  highlightFavButton?: boolean
 }) {
   const theme = useTheme()
+  const favButton = (
+    <Pressable
+      onPress={() => { Haptics.selectionAsync(); onToggleFav(food) }}
+      style={[styles.favBtn, { borderLeftColor: theme.colors.cardBorder }]}
+    >
+      <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={18} color={isFav ? theme.colors.danger : theme.colors.textTertiary} />
+    </Pressable>
+  )
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
       <Pressable style={styles.cardMain} onPress={() => onSelect(food)}>
@@ -57,12 +66,9 @@ function FoodCard({ food, onSelect, isFav, onToggleFav }: {
           <Text style={[styles.macroText, { color: theme.colors.fat }]}>F {food.fat_100g}g</Text>
         </View>
       </Pressable>
-      <Pressable
-        onPress={() => { Haptics.selectionAsync(); onToggleFav(food) }}
-        style={[styles.favBtn, { borderLeftColor: theme.colors.cardBorder }]}
-      >
-        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={18} color={isFav ? theme.colors.danger : theme.colors.textTertiary} />
-      </Pressable>
+      {highlightFavButton ? (
+        <TourTarget id="tip_fav_heart" style={{ alignSelf: 'stretch', justifyContent: 'center' }}>{favButton}</TourTarget>
+      ) : favButton}
     </View>
   )
 }
@@ -91,13 +97,17 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
     if (visible && !favLoading && favorites.length === 0) setActiveTab('search')
   }, [visible, favLoading, favorites.length])
 
+  const barcodeTipAttempted = useRef(false)
   useEffect(() => {
-    if (!visible || activeTab !== 'barcode' || seenFeatureTips.tip_barcode_scan) return
+    if (!visible || activeTab !== 'barcode' || seenFeatureTips.tip_barcode_scan || barcodeTipAttempted.current) return
+    barcodeTipAttempted.current = true
     showTip('tip_barcode_scan', { title: 'Scan a barcode', body: 'Point your camera at any product barcode to log it instantly.' })
   }, [visible, activeTab, seenFeatureTips, showTip])
 
+  const favHeartTipAttempted = useRef(false)
   useEffect(() => {
-    if (!visible || activeTab !== 'search' || results.length === 0 || seenFeatureTips.tip_fav_heart) return
+    if (!visible || activeTab !== 'search' || results.length === 0 || seenFeatureTips.tip_fav_heart || favHeartTipAttempted.current) return
+    favHeartTipAttempted.current = true
     showTip('tip_fav_heart', { title: 'Save favorites', body: 'Tap the heart on any food to save it for quick re-logging later.' })
   }, [visible, activeTab, results.length, seenFeatureTips, showTip])
 
@@ -243,13 +253,13 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
               keyExtractor={(f, i) => `${f.name}-${i}`}
               contentContainerStyle={styles.listContent}
               renderItem={({ item, index }) => (
-                index === 0 ? (
-                  <TourTarget id="tip_fav_heart">
-                    <FoodCard food={item} onSelect={handleSelectFood} isFav={isFavorite(item)} onToggleFav={handleToggleFav} />
-                  </TourTarget>
-                ) : (
-                  <FoodCard food={item} onSelect={handleSelectFood} isFav={isFavorite(item)} onToggleFav={handleToggleFav} />
-                )
+                <FoodCard
+                  food={item}
+                  onSelect={handleSelectFood}
+                  isFav={isFavorite(item)}
+                  onToggleFav={handleToggleFav}
+                  highlightFavButton={index === 0}
+                />
               )}
               ListEmptyComponent={
                 !searching && query.trim() ? (
@@ -262,7 +272,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
 
         {activeTab === 'barcode' && (
           <ScrollView contentContainerStyle={styles.barcodeContent}>
-            <TourTarget id="tip_barcode_scan">
+            <TourTarget id="tip_barcode_scan" style={{ alignSelf: 'stretch' }}>
               <Pressable
                 onPress={() => setShowScanner(true)}
                 style={[styles.scanButton, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent + '50', borderRadius: theme.style.cardRadius - 4 }]}

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { View, ActivityIndicator, useWindowDimensions } from 'react-native'
+import { View, ActivityIndicator } from 'react-native'
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { isDeletionPending } from '../lib/accountDeletion'
@@ -19,10 +18,8 @@ export function RootNavigator() {
   const { user, loading } = useAuth()
   const { profile, loading: profileLoading } = useProfile()
   const theme = useTheme()
-  const { startFirstLoginTour } = useTour()
+  const { startSequence } = useTour()
   const hasSeenFirstLoginTour = useTourProgressStore((s) => s.hasSeenFirstLoginTour)
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
-  const insets = useSafeAreaInsets()
   const startedRef = useRef(false)
 
   useEffect(() => {
@@ -30,8 +27,8 @@ export function RootNavigator() {
     if (loading || profileLoading) return
     if (!user || isDeletionPending(profile) || hasSeenFirstLoginTour) return
     startedRef.current = true
-    startFirstLoginTour(getFirstLoginTourSteps(screenWidth, screenHeight, insets.bottom))
-  }, [loading, profileLoading, user, profile, hasSeenFirstLoginTour, screenWidth, screenHeight, insets.bottom, startFirstLoginTour])
+    startSequence(getFirstLoginTourSteps())
+  }, [loading, profileLoading, user, profile, hasSeenFirstLoginTour, startSequence])
 
   if (loading || (user && profileLoading)) {
     return (

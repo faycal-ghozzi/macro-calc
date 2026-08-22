@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert, useWindowDimensions } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
@@ -15,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { useDowngradeUiStore } from '../store/useDowngradeUiStore'
 import { useTour } from '../contexts/TourContext'
-import { getFirstLoginTourSteps } from '../lib/tourSteps'
+import { getFullTourSteps } from '../lib/tourSteps'
 import { supabase } from '../lib/supabase'
 import { calculateMacroTargets } from '../lib/macroCalc'
 import { PRODUCTS } from '../lib/products'
@@ -39,9 +38,7 @@ export default function ProfileScreen() {
   const theme = useTheme()
   const { profile, loading, updateProfile } = useProfile()
   const { user, signOut } = useAuth()
-  const { startFirstLoginTour } = useTour()
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
-  const insets = useSafeAreaInsets()
+  const { startSequence } = useTour()
   const [form, setForm] = useState<Partial<ProfileType>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -229,7 +226,7 @@ export default function ProfileScreen() {
       <Pressable
         onPress={() => {
           Haptics.selectionAsync()
-          startFirstLoginTour(getFirstLoginTourSteps(screenWidth, screenHeight, insets.bottom))
+          startSequence(getFullTourSteps())
         }}
         style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 }]}
       >

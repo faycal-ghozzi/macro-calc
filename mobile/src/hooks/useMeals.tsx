@@ -15,6 +15,23 @@ interface MealsContextType {
   refetch: () => Promise<void>
 }
 
+// Ingredient objects can carry extra macro fields (e.g. sugar_g, computed
+// alongside the rest for food log entries) that meal_ingredients has no
+// column for - inserting them raw makes Supabase reject the whole row.
+function toMealIngredientRow(i: Omit<MealIngredient, 'id' | 'meal_id'>, meal_id: string) {
+  return {
+    meal_id,
+    food_name: i.food_name,
+    barcode: i.barcode,
+    amount_g: i.amount_g,
+    calories: i.calories,
+    protein_g: i.protein_g,
+    carbs_g: i.carbs_g,
+    fat_g: i.fat_g,
+    fiber_g: i.fiber_g,
+  }
+}
+
 const MealsContext = createContext<MealsContextType>({
   meals: [],
   loading: true,
@@ -77,8 +94,12 @@ export function MealsProvider({ children }: { children: ReactNode }) {
     if (ingredients.length > 0) {
       const { error: ingErr } = await supabase
         .from('meal_ingredients')
-        .insert(ingredients.map((i) => ({ ...i, meal_id: meal.id })))
-      if (ingErr) return { error: ingErr }
+        .insert(ingredients.map((i) => toMealIngredientRow(i, meal.id)))
+      if (ingErr) {
+        // Don't leave an orphaned, ingredient-less meal behind if this half fails.
+        await supabase.from('meals').delete().eq('id', meal.id)
+        return { error: ingErr }
+      }
     }
 
     await fetchMeals()
@@ -96,7 +117,7 @@ export function MealsProvider({ children }: { children: ReactNode }) {
     if (ingredients.length > 0) {
       const { error: ingErr } = await supabase
         .from('meal_ingredients')
-        .insert(ingredients.map((i) => ({ ...i, meal_id: id })))
+        .insert(ingredients.map((i) => toMealIngredientRow(i, id)))
       if (ingErr) return { error: ingErr }
     }
 

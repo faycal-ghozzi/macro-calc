@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Modal, ScrollView, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -56,9 +56,18 @@ export default function FoodLogScreen() {
   const { showTip } = useTour()
   const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
 
+  const logShareTipAttempted = useRef(false)
   useEffect(() => {
-    if (seenFeatureTips.tip_log_share) return
+    if (seenFeatureTips.tip_log_share || logShareTipAttempted.current) return
+    logShareTipAttempted.current = true
     showTip('tip_log_share', { title: 'Share your daily log', body: 'Generate a QR code of your whole day for a friend to scan and import.' })
+  }, [seenFeatureTips, showTip])
+
+  const logScanTipAttempted = useRef(false)
+  useEffect(() => {
+    if (seenFeatureTips.tip_log_scan || logScanTipAttempted.current) return
+    logScanTipAttempted.current = true
+    showTip('tip_log_scan', { title: 'Copy a daily log', body: "This scan is for copying someone else's daily log into yours." })
   }, [seenFeatureTips, showTip])
 
   const [pendingMeal, setPendingMeal] = useState<MealType | null>(null)
@@ -174,10 +183,12 @@ export default function FoodLogScreen() {
           {dateStr === todayStr ? "Today's Log" : dateStr}
         </Text>
         <View style={styles.headerActions}>
-          <Pressable onPress={() => setShowScanner(true)} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
-            <Ionicons name="scan-outline" size={14} color={theme.colors.textSecondary} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
-          </Pressable>
+          <TourTarget id="tip_log_scan">
+            <Pressable onPress={() => setShowScanner(true)} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
+              <Ionicons name="scan-outline" size={14} color={theme.colors.textSecondary} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
+            </Pressable>
+          </TourTarget>
           <TourTarget id="tip_log_share">
             <Pressable onPress={handleShareLog} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
               <Ionicons name="qr-code-outline" size={14} color={theme.colors.textSecondary} />

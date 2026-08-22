@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -11,6 +12,7 @@ import MealsScreen from '../screens/MealsScreen'
 import ProgressScreen from '../screens/ProgressScreen'
 import ProfileScreen from '../screens/ProfileScreen'
 import { useTheme } from '../theme/ThemeProvider'
+import { useTour } from '../contexts/TourContext'
 import type { MealType } from '../types'
 
 export type TabParamList = {
@@ -24,25 +26,37 @@ export type TabParamList = {
 const Tab = createBottomTabNavigator<TabParamList>()
 const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable)
 
-function AnimatedTabButton(props: BottomTabBarButtonProps) {
+function AnimatedTabButton(props: BottomTabBarButtonProps & { tabId: string }) {
+  const { tabId, ...rest } = props
   const scale = useSharedValue(1)
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+  const ref = useRef<View>(null)
+  const { registerTarget } = useTour()
 
   return (
     <AnimatedPressableBase
-      {...(props as any)}
-      style={[props.style, animatedStyle]}
+      {...(rest as any)}
+      ref={ref}
+      style={[rest.style, animatedStyle]}
+      onLayout={(e) => {
+        rest.onLayout?.(e)
+        requestAnimationFrame(() => {
+          ;(ref.current as unknown as View | null)?.measureInWindow((x, y, width, height) => {
+            registerTarget(tabId, { x, y, width, height })
+          })
+        })
+      }}
       onPressIn={(e) => {
         scale.value = withTiming(0.92, { duration: 100, easing: Easing.out(Easing.quad) })
-        props.onPressIn?.(e)
+        rest.onPressIn?.(e)
       }}
       onPressOut={(e) => {
         scale.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.quad) })
-        props.onPressOut?.(e)
+        rest.onPressOut?.(e)
       }}
       onPress={(e) => {
         Haptics.selectionAsync()
-        props.onPress?.(e)
+        rest.onPress?.(e)
       }}
     />
   )
@@ -96,7 +110,7 @@ export function TabNavigator() {
             <Ionicons name={ICONS[route.name as keyof TabParamList]} size={size - 2} color={color} />
           </View>
         ),
-        tabBarButton: (props) => <AnimatedTabButton {...props} />,
+        tabBarButton: (props) => <AnimatedTabButton {...props} tabId={`tab_${route.name}`} />,
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
