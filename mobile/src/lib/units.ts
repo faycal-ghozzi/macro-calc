@@ -120,11 +120,21 @@ export function displayValueToG(value: number, system: UnitSystem): number {
   return system === 'imperial' ? ozToG(value) : value
 }
 
+const OZ_PER_LB = 16
+
 // Compact formatter for the many inline "150g" / "8g" style badges that
 // don't go through MacroBar. Whole-gram rounding is fine metric, but a
 // single-digit gram value (e.g. 8g fat) rounds to 0oz - imperial keeps one
-// decimal so small quantities stay meaningful.
+// decimal so small quantities stay meaningful. Per-day/per-item macro
+// amounts never get large enough to need this, but sums across a whole
+// range (e.g. a "Total" stat) can - switching to kg/lb above 1000g/16oz
+// keeps those readable instead of overflowing a compact badge.
 export function formatMass(g: number, system: UnitSystem): string {
-  if (system === 'imperial') return `${(Math.round(gToOz(g) * 10) / 10).toFixed(1)}${massUnitLabel(system)}`
+  if (system === 'imperial') {
+    const oz = gToOz(g)
+    if (Math.abs(oz) >= OZ_PER_LB) return `${(Math.round((oz / OZ_PER_LB) * 10) / 10).toFixed(1)}lb`
+    return `${(Math.round(oz * 10) / 10).toFixed(1)}${massUnitLabel(system)}`
+  }
+  if (Math.abs(g) >= 1000) return `${(Math.round((g / 1000) * 10) / 10).toFixed(1)}kg`
   return `${Math.round(g)}${massUnitLabel(system)}`
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { View, ActivityIndicator } from 'react-native'
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native'
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { isDeletionPending } from '../lib/accountDeletion'
@@ -13,6 +13,7 @@ import AuthScreen from '../screens/AuthScreen'
 import AccountPendingDeletionScreen from '../screens/AccountPendingDeletionScreen'
 import { DowngradeStatusModal } from '../screens/DowngradeStatusModal'
 import { TourOverlay } from '../components/TourOverlay'
+import { SplashScreen } from '../components/SplashScreen'
 
 export function RootNavigator() {
   const { user, loading } = useAuth()
@@ -32,9 +33,9 @@ export function RootNavigator() {
 
   if (loading || (user && profileLoading)) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
-        <ActivityIndicator color={theme.colors.accent} />
-      </View>
+      <Animated.View style={{ flex: 1 }} exiting={FadeOut.duration(350)}>
+        <SplashScreen />
+      </Animated.View>
     )
   }
 
@@ -55,10 +56,12 @@ export function RootNavigator() {
   if (user) content = deletionPending ? <AccountPendingDeletionScreen /> : <TabNavigator />
 
   return (
-    <NavigationContainer theme={navTheme}>
-      {content}
-      {user && !deletionPending && <DowngradeStatusModal />}
-      {user && !deletionPending && <TourOverlay />}
-    </NavigationContainer>
+    <Animated.View style={{ flex: 1 }} entering={FadeIn.duration(350)}>
+      <NavigationContainer theme={navTheme}>
+        {content}
+        {user && !deletionPending && <DowngradeStatusModal />}
+        {user && !deletionPending && <TourOverlay />}
+      </NavigationContainer>
+    </Animated.View>
   )
 }

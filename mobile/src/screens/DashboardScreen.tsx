@@ -318,13 +318,15 @@ export default function DashboardScreen() {
       </>
       )}
 
-      <AnimatedPressable
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); navigation.navigate('Log', { date: dateStr }) }}
-        style={[styles.addButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4 }]}
-      >
-        <Ionicons name="add" size={20} color={theme.colors.onAccent} />
-        <Text style={[styles.addButtonText, { color: theme.colors.onAccent }]}>{t('dashboard.addFood')}</Text>
-      </AnimatedPressable>
+      {!loading && (
+        <AnimatedPressable
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); navigation.navigate('Log', { date: dateStr }) }}
+          style={[styles.addButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4 }]}
+        >
+          <Ionicons name="add" size={20} color={theme.colors.onAccent} />
+          <Text style={[styles.addButtonText, { color: theme.colors.onAccent }]}>{t('dashboard.addFood')}</Text>
+        </AnimatedPressable>
+      )}
 
       <LogWeightModal visible={showWeightModal} onClose={() => setShowWeightModal(false)} />
     </Screen>

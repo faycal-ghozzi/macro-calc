@@ -308,7 +308,7 @@ export default function ProgressScreen() {
                 })}
               >
                 <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.avgDailyCalories')}</Text>
-                <Text style={[styles.gridValue, { color: theme.colors.textPrimary }]}>{report.avg_calories}</Text>
+                <Text style={[styles.gridValue, { color: theme.colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{report.avg_calories}</Text>
                 {targets && <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.targetSuffix', { value: targets.calories })}</Text>}
               </Card>
               <Card
@@ -321,7 +321,7 @@ export default function ProgressScreen() {
                 })}
               >
                 <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.avgNetCalories')}</Text>
-                <Text style={[styles.gridValue, { color: theme.colors.accent }]}>{report.avg_net_calories}</Text>
+                <Text style={[styles.gridValue, { color: theme.colors.accent }]} numberOfLines={1} adjustsFontSizeToFit>{report.avg_net_calories}</Text>
                 <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.afterExercise')}</Text>
               </Card>
               <Card
@@ -334,7 +334,7 @@ export default function ProgressScreen() {
                 })}
               >
                 <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.totalBurned')}</Text>
-                <Text style={[styles.gridValue, { color: theme.colors.calories }]}>{report.total_burned} {t('common.kcal')}</Text>
+                <Text style={[styles.gridValue, { color: theme.colors.calories }]} numberOfLines={1} adjustsFontSizeToFit>{report.total_burned} {t('common.kcal')}</Text>
                 <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.activeDays', { count: report.active_days })}</Text>
               </Card>
               <Card
@@ -348,7 +348,7 @@ export default function ProgressScreen() {
                 })}
               >
                 <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.avgProtein')}</Text>
-                <Text style={[styles.gridValue, { color: theme.colors.protein }]}>{formatMass(report.avg_protein, system)}</Text>
+                <Text style={[styles.gridValue, { color: theme.colors.protein }]} numberOfLines={1} adjustsFontSizeToFit>{formatMass(report.avg_protein, system)}</Text>
                 {targets && <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.targetSuffix', { value: formatMass(targets.protein_g, system) })}</Text>}
               </Card>
             </View>

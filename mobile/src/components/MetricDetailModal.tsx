@@ -42,19 +42,19 @@ export function MetricDetailModal({ visible, onClose, title, color, points, form
           <>
             <View style={styles.statsRow}>
               <Card style={styles.statCell}>
-                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{formatValue(avg)}</Text>
+                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{formatValue(avg)}</Text>
                 <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>{t('progress.detailAvg')}</Text>
               </Card>
               <Card style={styles.statCell}>
-                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{formatValue(max)}</Text>
+                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{formatValue(max)}</Text>
                 <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>{t('progress.detailMax')}</Text>
               </Card>
               <Card style={styles.statCell}>
-                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{formatValue(min)}</Text>
+                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{formatValue(min)}</Text>
                 <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>{t('progress.detailMin')}</Text>
               </Card>
               <Card style={styles.statCell}>
-                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{formatValue(total)}</Text>
+                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{formatValue(total)}</Text>
                 <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>{t('progress.detailTotal')}</Text>
               </Card>
             </View>
