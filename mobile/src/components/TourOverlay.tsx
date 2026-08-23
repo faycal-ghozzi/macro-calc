@@ -4,12 +4,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import Svg, { Path } from 'react-native-svg'
 import Animated, { useSharedValue, useAnimatedStyle, useAnimatedProps, withTiming, withRepeat, withSequence, Easing } from 'react-native-reanimated'
 import * as Haptics from '../lib/haptics'
 import { useTheme } from '../theme/ThemeProvider'
 import { useTour } from '../contexts/TourContext'
 import type { TabParamList } from '../navigation/TabNavigator'
+import { mirrorChevron } from '../lib/rtl'
 
 const SPOTLIGHT_PADDING = 8
 const TOOLTIP_GAP = 16
@@ -28,6 +30,7 @@ function roundedRectPath(x: number, y: number, w: number, h: number, r: number) 
 
 export function TourOverlay() {
   const theme = useTheme()
+  const { t } = useTranslation()
   const { activeStep, next, skip, getTargetRect } = useTour()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const spotlightRadius = theme.style.cardRadius - 6
@@ -160,7 +163,7 @@ export function TourOverlay() {
           ]}
         >
           {totalSteps > 1 && (
-            <Text style={[styles.stepCount, { color: theme.colors.textTertiary }]}>{stepNumber} / {totalSteps}</Text>
+            <Text style={[styles.stepCount, { color: theme.colors.textTertiary }]}>{t('tour.stepCounter', { step: stepNumber, total: totalSteps })}</Text>
           )}
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{title}</Text>
           <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{body}</Text>
@@ -168,7 +171,7 @@ export function TourOverlay() {
           <View style={styles.actions}>
             {kind === 'sequence' && stepNumber < totalSteps && (
               <Pressable onPress={() => { Haptics.selectionAsync(); skip() }} style={styles.skipButton}>
-                <Text style={{ color: theme.colors.textTertiary, fontSize: 13, fontWeight: '600' }}>Skip</Text>
+                <Text style={{ color: theme.colors.textTertiary, fontSize: 13, fontWeight: '600' }}>{t('common.skip')}</Text>
               </Pressable>
             )}
             <Pressable
@@ -176,10 +179,10 @@ export function TourOverlay() {
               style={[styles.nextButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 8 }]}
             >
               <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>
-                {kind === 'tip' || stepNumber === totalSteps ? 'Got it' : 'Next'}
+                {kind === 'tip' || stepNumber === totalSteps ? t('common.gotIt') : t('common.next')}
               </Text>
               {kind === 'sequence' && stepNumber < totalSteps && (
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.onAccent} />
+                <Ionicons name={mirrorChevron('chevron-forward')} size={16} color={theme.colors.onAccent} />
               )}
             </Pressable>
           </View>

@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator, FlatList } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { ModalScreen } from './ModalScreen'
 import { useTheme } from '../theme/ThemeProvider'
 import { useProfile } from '../hooks/useProfile'
-import { searchExercises, calcCaloriesBurned, EXERCISE_CATEGORIES, Exercise } from '../lib/exercises'
+import { useUnitsStore } from '../store/useUnitsStore'
+import { weightUnitLabel, kgToDisplayValue } from '../lib/units'
+import { searchExercises, calcCaloriesBurned, EXERCISE_CATEGORIES, exerciseCategoryLabelKey, Exercise } from '../lib/exercises'
+import { mirrorChevron } from '../lib/rtl'
 
 interface ExerciseModalProps {
   visible: boolean
@@ -17,8 +21,12 @@ const QUICK_DURATIONS = [15, 20, 30, 45, 60, 90]
 
 export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
   const theme = useTheme()
+  const { t } = useTranslation()
   const { profile } = useProfile()
+  const { system } = useUnitsStore()
   const weight = profile?.current_weight_kg ?? 70
+  const weightUnit = weightUnitLabel(system)
+  const displayWeight = Math.round(kgToDisplayValue(weight, system))
 
   const [tab, setTab] = useState<'search' | 'manual'>('search')
   const [query, setQuery] = useState('')
@@ -67,14 +75,14 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
   }
 
   return (
-    <ModalScreen visible={visible} title="Log Exercise" onClose={() => { reset(); onClose() }}>
+    <ModalScreen visible={visible} title={t('exercise.title')} onClose={() => { reset(); onClose() }}>
       <View style={[styles.tabBar, { borderBottomColor: theme.colors.cardBorder }]}>
-        {(['search', 'manual'] as const).map((t) => (
-          <Pressable key={t} onPress={() => { Haptics.selectionAsync(); setTab(t) }} style={styles.tabButton}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: tab === t ? theme.colors.calories : theme.colors.textTertiary }}>
-              {t === 'search' ? 'Find Exercise' : 'Manual Entry'}
+        {(['search', 'manual'] as const).map((tabKey) => (
+          <Pressable key={tabKey} onPress={() => { Haptics.selectionAsync(); setTab(tabKey) }} style={styles.tabButton}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: tab === tabKey ? theme.colors.calories : theme.colors.textTertiary }}>
+              {tabKey === 'search' ? t('exercise.tabFind') : t('exercise.tabManual')}
             </Text>
-            {tab === t && <View style={[styles.tabUnderline, { backgroundColor: theme.colors.calories }]} />}
+            {tab === tabKey && <View style={[styles.tabUnderline, { backgroundColor: theme.colors.calories }]} />}
           </Pressable>
         ))}
       </View>
@@ -87,7 +95,7 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
                 <Ionicons name="search" size={16} color={theme.colors.textTertiary} />
                 <TextInput
                   autoFocus
-                  placeholder="Search exercises..."
+                  placeholder={t('exercise.searchPlaceholder')}
                   placeholderTextColor={theme.colors.textTertiary}
                   value={query}
                   onChangeText={setQuery}
@@ -99,7 +107,7 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
                   onPress={() => setCategory(null)}
                   style={[styles.pill, { backgroundColor: !category ? theme.colors.calories : theme.colors.backgroundElevated }]}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: !category ? theme.colors.onAccent : theme.colors.textSecondary }}>All</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: !category ? theme.colors.onAccent : theme.colors.textSecondary }}>{t('common.all')}</Text>
                 </Pressable>
                 {EXERCISE_CATEGORIES.map((cat) => (
                   <Pressable
@@ -107,7 +115,7 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
                     onPress={() => setCategory(category === cat ? null : cat)}
                     style={[styles.pill, { backgroundColor: category === cat ? theme.colors.calories : theme.colors.backgroundElevated }]}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: category === cat ? theme.colors.onAccent : theme.colors.textSecondary }}>{cat}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: category === cat ? theme.colors.onAccent : theme.colors.textSecondary }}>{t(exerciseCategoryLabelKey(cat))}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -123,10 +131,10 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
                 >
                   <View>
                     <Text style={[styles.exerciseName, { color: theme.colors.textPrimary }]}>{item.name}</Text>
-                    <Text style={[styles.exerciseCategory, { color: theme.colors.textTertiary }]}>{item.category}</Text>
+                    <Text style={[styles.exerciseCategory, { color: theme.colors.textTertiary }]}>{t(exerciseCategoryLabelKey(item.category))}</Text>
                   </View>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.calories }}>
-                    ~{calcCaloriesBurned(item.met, weight, 30)} kcal/30min
+                    {t('exercise.caloriesPer30Min', { count: calcCaloriesBurned(item.met, weight, 30) })}
                   </Text>
                 </Pressable>
               )}
@@ -135,17 +143,17 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
         ) : (
           <ScrollView contentContainerStyle={{ padding: 16, gap: 18 }}>
             <Pressable onPress={() => setSelected(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="chevron-back" size={14} color={theme.colors.textTertiary} />
-              <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>Back to list</Text>
+              <Ionicons name={mirrorChevron('chevron-back')} size={14} color={theme.colors.textTertiary} />
+              <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>{t('exercise.backToList')}</Text>
             </Pressable>
 
             <View style={[styles.selectedBox, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.textPrimary }}>{selected.name}</Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 3 }}>{selected.category} · MET {selected.met}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 3 }}>{t('exercise.categoryMet', { category: t(exerciseCategoryLabelKey(selected.category)), met: selected.met })}</Text>
             </View>
 
             <View style={{ gap: 10 }}>
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Duration (minutes)</Text>
+              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{t('exercise.durationLabel')}</Text>
               <View style={[styles.amountBox, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
                 <TextInput
                   value={duration}
@@ -153,7 +161,7 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
                   keyboardType="number-pad"
                   style={[styles.amountInput, { color: theme.colors.textPrimary }]}
                 />
-                <Text style={{ fontSize: 12, color: theme.colors.textTertiary, fontWeight: '600' }}>min</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textTertiary, fontWeight: '600' }}>{t('common.minutesShort')}</Text>
               </View>
               <View style={styles.quickGrid}>
                 {QUICK_DURATIONS.map((d) => (
@@ -162,7 +170,7 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
                     onPress={() => { Haptics.selectionAsync(); setDuration(String(d)) }}
                     style={[styles.quickButton, { backgroundColor: durationNum === d ? theme.colors.calories : theme.colors.backgroundElevated }]}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: durationNum === d ? theme.colors.onAccent : theme.colors.textSecondary }}>{d} min</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: durationNum === d ? theme.colors.onAccent : theme.colors.textSecondary }}>{d} {t('common.minutesShort')}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -173,8 +181,8 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="flame" size={20} color={theme.colors.calories} />
                   <View>
-                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>Est. calories burned</Text>
-                    <Text style={{ fontSize: 10, color: theme.colors.textTertiary }}>Based on {weight}kg body weight</Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{t('exercise.estCalories')}</Text>
+                    <Text style={{ fontSize: 10, color: theme.colors.textTertiary }}>{t('exercise.basedOnWeight', { weight: `${displayWeight}${weightUnit}` })}</Text>
                   </View>
                 </View>
                 <Text style={{ fontSize: 22, fontWeight: '700', color: theme.colors.calories }}>{estimatedCals}</Text>
@@ -187,15 +195,15 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
               style={[styles.submitButton, { backgroundColor: theme.colors.calories, borderRadius: theme.style.cardRadius - 4, opacity: saving || durationNum <= 0 ? 0.5 : 1 }]}
             >
               {saving ? <ActivityIndicator color={theme.colors.onAccent} /> : null}
-              <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>Log {estimatedCals} kcal burned</Text>
+              <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{t('exercise.logCaloriesBurned', { count: estimatedCals })}</Text>
             </Pressable>
           </ScrollView>
         )
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-          <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>Enter exactly what your fitness tracker or app recorded.</Text>
+          <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>{t('exercise.manualIntro')}</Text>
           <TextInput
-            placeholder="Exercise name"
+            placeholder={t('exercise.namePlaceholder')}
             placeholderTextColor={theme.colors.textTertiary}
             value={manualName}
             onChangeText={setManualName}
@@ -203,9 +211,9 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
           />
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Calories burned *</Text>
+              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{t('exercise.caloriesLabel')}</Text>
               <TextInput
-                placeholder="e.g. 350"
+                placeholder={t('exercise.caloriesPlaceholder')}
                 placeholderTextColor={theme.colors.textTertiary}
                 value={manualCals}
                 onChangeText={setManualCals}
@@ -214,9 +222,9 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
               />
             </View>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Duration (min)</Text>
+              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{t('exercise.durationMinLabel')}</Text>
               <TextInput
-                placeholder="optional"
+                placeholder={t('exercise.durationPlaceholder')}
                 placeholderTextColor={theme.colors.textTertiary}
                 value={manualDuration}
                 onChangeText={setManualDuration}
@@ -231,7 +239,7 @@ export function ExerciseModal({ visible, onAdd, onClose }: ExerciseModalProps) {
             style={[styles.submitButton, { backgroundColor: theme.colors.calories, borderRadius: theme.style.cardRadius - 4, opacity: saving || !manualName.trim() || !manualCals ? 0.5 : 1 }]}
           >
             {saving ? <ActivityIndicator color={theme.colors.onAccent} /> : null}
-            <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>Log Exercise</Text>
+            <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{t('exercise.logExercise')}</Text>
           </Pressable>
         </ScrollView>
       )}

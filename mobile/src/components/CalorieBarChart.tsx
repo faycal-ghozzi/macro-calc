@@ -24,7 +24,7 @@ function AnimatedBar({ x, bottom, targetHeight, width, fill, delay }: {
 
   useEffect(() => {
     h.value = withDelay(delay, withTiming(targetHeight, { duration: 500, easing: Easing.out(Easing.cubic) }))
-  }, [targetHeight, delay])
+  }, [targetHeight, delay, h])
 
   const animatedProps = useAnimatedProps(() => ({
     height: h.value,

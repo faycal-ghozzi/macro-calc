@@ -1,6 +1,7 @@
 import { Component, ReactNode } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import i18next from '../i18n'
 import { useThemeStore } from '../store/useThemeStore'
 import { THEMES } from '../theme/themes'
 
@@ -34,10 +35,10 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
           <Ionicons name="warning-outline" size={32} color={theme.colors.danger} />
-          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>This screen hit a snag</Text>
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{i18next.t('errorBoundary.title')}</Text>
           <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{this.state.error.message}</Text>
           <Pressable onPress={this.reset} style={[styles.button, { backgroundColor: theme.colors.accentSoft }]}>
-            <Text style={[styles.buttonText, { color: theme.colors.accent }]}>Try again</Text>
+            <Text style={[styles.buttonText, { color: theme.colors.accent }]}>{i18next.t('errorBoundary.tryAgain')}</Text>
           </Pressable>
         </View>
       )

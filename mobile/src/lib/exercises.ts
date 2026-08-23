@@ -62,6 +62,20 @@ export function calcCaloriesBurned(met: number, weight_kg: number, duration_min:
 
 export const EXERCISE_CATEGORIES = ['Cardio', 'Strength', 'Sports', 'Other'] as const
 
+// Category values stay the raw English strings above (used for
+// filtering/matching against exercise.category) - this only maps them to a
+// translation key for display, same pattern as lib/commonFoods.ts.
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  Cardio: 'common.exerciseCategories.cardio',
+  Strength: 'common.exerciseCategories.strength',
+  Sports: 'common.exerciseCategories.sports',
+  Other: 'common.exerciseCategories.other',
+}
+
+export function exerciseCategoryLabelKey(category: string): string {
+  return CATEGORY_LABEL_KEYS[category] ?? category
+}
+
 export function searchExercises(query: string): Exercise[] {
   if (!query.trim()) return EXERCISES
   const q = query.toLowerCase()

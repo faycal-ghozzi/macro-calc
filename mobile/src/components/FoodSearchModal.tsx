@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator, Alert, FlatList } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { ModalScreen } from './ModalScreen'
 import { CameraScannerModal } from './CameraScannerModal'
@@ -14,8 +15,12 @@ import { useMeals } from '../hooks/useMeals'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { useTour, TourTarget } from '../contexts/TourContext'
 import { useTourProgressStore } from '../store/useTourProgressStore'
-import { searchCommonFoods, FOOD_CATEGORIES } from '../lib/commonFoods'
+import { searchCommonFoods, FOOD_CATEGORIES, categoryLabelKey } from '../lib/commonFoods'
 import { fetchProductByBarcode, searchProducts } from '../lib/openfoodfacts'
+import { calcMealTotals } from '../lib/macroCalc'
+import { mirrorChevron } from '../lib/rtl'
+import { useUnitsStore } from '../store/useUnitsStore'
+import { formatMass } from '../lib/units'
 import type { FoodItem, Meal } from '../types'
 import type { CodeFormat } from 'react-native-camera-kit'
 
@@ -40,6 +45,8 @@ function FoodCard({ food, onSelect, isFav, onToggleFav, highlightFavButton }: {
   highlightFavButton?: boolean
 }) {
   const theme = useTheme()
+  const { t } = useTranslation()
+  const { system } = useUnitsStore()
   const favButton = (
     <Pressable
       onPress={() => { Haptics.selectionAsync(); onToggleFav(food) }}
@@ -55,15 +62,15 @@ function FoodCard({ food, onSelect, isFav, onToggleFav, highlightFavButton }: {
           <View style={{ flex: 1 }}>
             <Text style={[styles.cardName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{food.name}</Text>
             {food.category ? (
-              <Text style={[styles.cardCategory, { color: theme.colors.textTertiary }]}>{food.category} · per 100g</Text>
+              <Text style={[styles.cardCategory, { color: theme.colors.textTertiary }]}>{t('food.perCategoryAmount', { category: t(categoryLabelKey(food.category)), amount: formatMass(100, system) })}</Text>
             ) : null}
           </View>
-          <Text style={[styles.cardKcal, { color: theme.colors.accent }]}>{food.calories_100g} kcal</Text>
+          <Text style={[styles.cardKcal, { color: theme.colors.accent }]}>{food.calories_100g} {t('common.kcal')}</Text>
         </View>
         <View style={styles.macroRow}>
-          <Text style={[styles.macroText, { color: theme.colors.protein }]}>P {food.protein_100g}g</Text>
-          <Text style={[styles.macroText, { color: theme.colors.carbs }]}>C {food.carbs_100g}g</Text>
-          <Text style={[styles.macroText, { color: theme.colors.fat }]}>F {food.fat_100g}g</Text>
+          <Text style={[styles.macroText, { color: theme.colors.protein }]}>P {formatMass(food.protein_100g, system)}</Text>
+          <Text style={[styles.macroText, { color: theme.colors.carbs }]}>C {formatMass(food.carbs_100g, system)}</Text>
+          <Text style={[styles.macroText, { color: theme.colors.fat }]}>F {formatMass(food.fat_100g, system)}</Text>
         </View>
       </Pressable>
       {highlightFavButton ? (
@@ -73,8 +80,59 @@ function FoodCard({ food, onSelect, isFav, onToggleFav, highlightFavButton }: {
   )
 }
 
+function MealCard({ meal, onSelect, expanded, onToggleExpand }: {
+  meal: Meal
+  onSelect: (meal: Meal) => void
+  expanded: boolean
+  onToggleExpand: () => void
+}) {
+  const theme = useTheme()
+  const { t } = useTranslation()
+  const { system } = useUnitsStore()
+  const totals = calcMealTotals(meal.ingredients ?? [])
+  const ingredientCount = meal.ingredients?.length ?? 0
+
+  return (
+    <View style={[styles.mealCard, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
+      <View style={styles.card}>
+        <Pressable style={styles.cardMain} onPress={() => onSelect(meal)}>
+          <View style={styles.cardTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{meal.name}</Text>
+              <Text style={[styles.cardCategory, { color: theme.colors.textTertiary }]}>{t('food.ingredientCount', { count: ingredientCount })}</Text>
+            </View>
+            <Text style={[styles.cardKcal, { color: theme.colors.accent }]}>{Math.round(totals.calories)} {t('common.kcal')}</Text>
+          </View>
+          <View style={styles.macroRow}>
+            <Text style={[styles.macroText, { color: theme.colors.protein }]}>P {formatMass(totals.protein_g, system)}</Text>
+            <Text style={[styles.macroText, { color: theme.colors.carbs }]}>C {formatMass(totals.carbs_g, system)}</Text>
+            <Text style={[styles.macroText, { color: theme.colors.fat }]}>F {formatMass(totals.fat_g, system)}</Text>
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={() => { Haptics.selectionAsync(); onToggleExpand() }}
+          style={[styles.expandBtn, { borderLeftColor: theme.colors.cardBorder }]}
+        >
+          <Ionicons name={mirrorChevron(expanded ? 'chevron-up' : 'chevron-down')} size={18} color={theme.colors.textTertiary} />
+        </Pressable>
+      </View>
+      {expanded && ingredientCount > 0 && (
+        <View>
+          {meal.ingredients!.map((ing) => (
+            <View key={ing.id} style={[styles.ingredientRow, { borderTopColor: theme.colors.cardBorder }]}>
+              <Text style={[styles.ingredientName, { color: theme.colors.textPrimary }]} numberOfLines={1}>{ing.food_name}</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>{formatMass(ing.amount_g, system)} · {Math.round(ing.calories)} {t('common.kcal')}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  )
+}
+
 export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: FoodSearchModalProps) {
   const theme = useTheme()
+  const { t } = useTranslation()
   const { favorites, loading: favLoading, fetchError: favError, isFavorite, toggleFavorite, touchFavoriteUsed, refetch: refetchFavorites } = useFavorites()
   const { meals, loading: mealsLoading, fetchError: mealsError, refetch: refetchMeals } = useMeals()
   const { checkAndIncrementFavoriteCreated } = useEntitlements()
@@ -83,6 +141,8 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
   const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
 
   const [activeTab, setActiveTab] = useState<Tab>('favorites')
+  const [favoriteQuery, setFavoriteQuery] = useState('')
+  const [mealQuery, setMealQuery] = useState('')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<FoodItem[]>(searchCommonFoods('').slice(0, 20))
   const [searching, setSearching] = useState(false)
@@ -91,6 +151,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeResult, setBarcodeResult] = useState<FoodItem | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [expandedMealId, setExpandedMealId] = useState<string | null>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -101,15 +162,15 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
   useEffect(() => {
     if (!visible || activeTab !== 'barcode' || seenFeatureTips.tip_barcode_scan || barcodeTipAttempted.current) return
     barcodeTipAttempted.current = true
-    showTip('tip_barcode_scan', { title: 'Scan a barcode', body: 'Point your camera at any product barcode to log it instantly.' })
-  }, [visible, activeTab, seenFeatureTips, showTip])
+    showTip('tip_barcode_scan', { title: t('tour.tipBarcodeScanTitle'), body: t('tour.tipBarcodeScanBody') })
+  }, [visible, activeTab, seenFeatureTips, showTip, t])
 
   const favHeartTipAttempted = useRef(false)
   useEffect(() => {
     if (!visible || activeTab !== 'search' || results.length === 0 || seenFeatureTips.tip_fav_heart || favHeartTipAttempted.current) return
     favHeartTipAttempted.current = true
-    showTip('tip_fav_heart', { title: 'Save favorites', body: 'Tap the heart on any food to save it for quick re-logging later.' })
-  }, [visible, activeTab, results.length, seenFeatureTips, showTip])
+    showTip('tip_fav_heart', { title: t('tour.tipFavHeartTitle'), body: t('tour.tipFavHeartBody') })
+  }, [visible, activeTab, results.length, seenFeatureTips, showTip, t])
 
   useEffect(() => {
     if (activeTab !== 'search') return
@@ -153,7 +214,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
     const food = await fetchProductByBarcode(barcodeInput.trim())
     setBarcodeLoading(false)
     if (food) setBarcodeResult(food)
-    else Alert.alert('Not found', 'Product not found in database. Try searching by name.')
+    else Alert.alert(t('common.notFoundTitle'), t('food.notFoundInDatabase'))
   }
 
   async function handleScan(barcode: string) {
@@ -166,20 +227,27 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
     if (food) setBarcodeResult(food)
     else {
       setBarcodeInput(barcode)
-      Alert.alert('Not found', 'Product not found. Barcode filled in for manual lookup.')
+      Alert.alert(t('common.notFoundTitle'), t('food.notFoundManualLookup'))
     }
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'favorites', label: 'Saved' },
-    { id: 'search', label: 'Search' },
-    { id: 'barcode', label: 'Barcode' },
-    ...(onSelectMeal ? [{ id: 'meals' as Tab, label: 'My Meals' }] : []),
+  const tabs: { id: Tab; labelKey: string }[] = [
+    { id: 'favorites', labelKey: 'food.tabSaved' },
+    { id: 'search', labelKey: 'food.tabSearch' },
+    { id: 'barcode', labelKey: 'food.tabBarcode' },
+    ...(onSelectMeal ? [{ id: 'meals' as Tab, labelKey: 'food.tabMyMeals' }] : []),
   ]
+
+  const filteredFavorites = favoriteQuery.trim()
+    ? favorites.filter((f) => f.name.toLowerCase().includes(favoriteQuery.trim().toLowerCase()))
+    : favorites
+  const filteredMeals = mealQuery.trim()
+    ? meals.filter((m) => m.name.toLowerCase().includes(mealQuery.trim().toLowerCase()))
+    : meals
 
   return (
     <>
-      <ModalScreen visible={visible && !showScanner} title="Add Food" onClose={onClose}>
+      <ModalScreen visible={visible && !showScanner} title={t('food.addFoodTitle')} onClose={onClose}>
         <View style={[styles.tabBar, { borderBottomColor: theme.colors.cardBorder }]}>
           {tabs.map((tab) => (
             <Pressable
@@ -188,7 +256,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
               style={styles.tabButton}
             >
               <Text style={{ fontSize: 13, fontWeight: '600', color: activeTab === tab.id ? theme.colors.accent : theme.colors.textTertiary }}>
-                {tab.label}
+                {t(tab.labelKey)}
               </Text>
               {activeTab === tab.id && <View style={[styles.tabUnderline, { backgroundColor: theme.colors.accent }]} />}
             </Pressable>
@@ -196,23 +264,41 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
         </View>
 
         {activeTab === 'favorites' && (
-          <FlatList
-            data={favorites}
-            keyExtractor={(f, i) => f.barcode ?? `${f.name}-${i}`}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <FoodCard food={item} onSelect={handleSelectFood} isFav={true} onToggleFav={handleToggleFav} />
+          <View style={{ flex: 1 }}>
+            {favorites.length > 0 && (
+              <View style={styles.searchArea}>
+                <View style={[styles.searchBox, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
+                  <Ionicons name="search" size={17} color={theme.colors.textTertiary} />
+                  <TextInput
+                    placeholder={t('food.searchFavoritesPlaceholder')}
+                    placeholderTextColor={theme.colors.textTertiary}
+                    value={favoriteQuery}
+                    onChangeText={setFavoriteQuery}
+                    style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+                  />
+                </View>
+              </View>
             )}
-            ListEmptyComponent={
-              favLoading ? (
-                <LoadingState minHeight={200} />
-              ) : favError ? (
-                <ErrorState message="Couldn't load your favorites." onRetry={refetchFavorites} />
-              ) : (
-                <EmptyState icon="star-outline" title="No saved foods yet" subtitle="Tap the heart on any food to save it here" />
-              )
-            }
-          />
+            <FlatList
+              data={filteredFavorites}
+              keyExtractor={(f, i) => f.barcode ?? `${f.name}-${i}`}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <FoodCard food={item} onSelect={handleSelectFood} isFav={true} onToggleFav={handleToggleFav} />
+              )}
+              ListEmptyComponent={
+                favLoading ? (
+                  <LoadingState minHeight={200} />
+                ) : favError ? (
+                  <ErrorState message={t('food.loadFavoritesError')} onRetry={refetchFavorites} />
+                ) : favoriteQuery.trim() ? (
+                  <EmptyState icon="search-outline" title={t('food.noResultsTitle')} />
+                ) : (
+                  <EmptyState icon="heart-outline" title={t('food.emptyFavoritesTitle')} subtitle={t('food.emptyFavoritesSubtitle')} />
+                )
+              }
+            />
+          </View>
         )}
 
         {activeTab === 'search' && (
@@ -222,7 +308,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
                 <Ionicons name="search" size={17} color={theme.colors.textTertiary} />
                 <TextInput
                   autoFocus
-                  placeholder="Search foods..."
+                  placeholder={t('food.searchPlaceholder')}
                   placeholderTextColor={theme.colors.textTertiary}
                   value={query}
                   onChangeText={setQuery}
@@ -235,7 +321,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
                   onPress={() => setSelectedCategory(null)}
                   style={[styles.pill, { backgroundColor: !selectedCategory ? theme.colors.accent : theme.colors.backgroundElevated }]}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: !selectedCategory ? theme.colors.onAccent : theme.colors.textSecondary }}>All</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: !selectedCategory ? theme.colors.onAccent : theme.colors.textSecondary }}>{t('common.all')}</Text>
                 </Pressable>
                 {FOOD_CATEGORIES.map((cat) => (
                   <Pressable
@@ -243,7 +329,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
                     onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
                     style={[styles.pill, { backgroundColor: selectedCategory === cat ? theme.colors.accent : theme.colors.backgroundElevated }]}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: selectedCategory === cat ? theme.colors.onAccent : theme.colors.textSecondary }}>{cat}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: selectedCategory === cat ? theme.colors.onAccent : theme.colors.textSecondary }}>{t(categoryLabelKey(cat))}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -263,7 +349,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
               )}
               ListEmptyComponent={
                 !searching && query.trim() ? (
-                  <EmptyState icon="search-outline" title="No results found" />
+                  <EmptyState icon="search-outline" title={t('food.noResultsTitle')} />
                 ) : null
               }
             />
@@ -278,21 +364,21 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
                 style={[styles.scanButton, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent + '50', borderRadius: theme.style.cardRadius - 4 }]}
               >
                 <Ionicons name="barcode-outline" size={24} color={theme.colors.accent} />
-                <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 14 }}>Open Camera Scanner</Text>
+                <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 14 }}>{t('food.openCameraScanner')}</Text>
               </Pressable>
             </TourTarget>
 
             <View style={styles.dividerRow}>
               <View style={[styles.divider, { backgroundColor: theme.colors.cardBorder }]} />
-              <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>or enter barcode</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{t('food.orEnterBarcode')}</Text>
               <View style={[styles.divider, { backgroundColor: theme.colors.cardBorder }]} />
             </View>
 
             <TextInput
-              placeholder="e.g. 5449000131805"
+              placeholder={t('food.barcodePlaceholder')}
               placeholderTextColor={theme.colors.textTertiary}
               value={barcodeInput}
-              onChangeText={(t) => { setBarcodeInput(t); setBarcodeResult(null) }}
+              onChangeText={(v) => { setBarcodeInput(v); setBarcodeResult(null) }}
               keyboardType="number-pad"
               style={[styles.barcodeInput, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 6 }]}
             />
@@ -302,13 +388,13 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
               style={[styles.lookupButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 6, opacity: barcodeLoading || !barcodeInput.trim() ? 0.5 : 1 }]}
             >
               {barcodeLoading ? <ActivityIndicator color={theme.colors.onAccent} /> : (
-                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>Look Up Product</Text>
+                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>{t('food.lookUpProduct')}</Text>
               )}
             </Pressable>
 
             {barcodeResult && (
               <View style={{ width: '100%', marginTop: 8 }}>
-                <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginBottom: 8 }}>Found:</Text>
+                <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginBottom: 8 }}>{t('common.found')}</Text>
                 <FoodCard food={barcodeResult} onSelect={handleSelectFood} isFav={isFavorite(barcodeResult)} onToggleFav={handleToggleFav} />
               </View>
             )}
@@ -316,50 +402,53 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
         )}
 
         {activeTab === 'meals' && onSelectMeal && (
-          <FlatList
-            data={meals}
-            keyExtractor={(m) => m.id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => {
-              const totals = (item.ingredients ?? []).reduce(
-                (acc, i) => ({ cal: acc.cal + i.calories, p: acc.p + i.protein_g, c: acc.c + i.carbs_g, f: acc.f + i.fat_g }),
-                { cal: 0, p: 0, c: 0, f: 0 }
-              )
-              return (
-                <Pressable
-                  onPress={() => onSelectMeal(item)}
-                  style={[styles.card, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6, padding: 14 }]}
-                >
-                  <View style={styles.cardTop}>
-                    <Text style={[styles.cardName, { color: theme.colors.textPrimary }]}>{item.name}</Text>
-                    <Text style={[styles.cardKcal, { color: theme.colors.accent }]}>{Math.round(totals.cal)} kcal</Text>
-                  </View>
-                  <View style={styles.macroRow}>
-                    <Text style={[styles.macroText, { color: theme.colors.protein }]}>P {Math.round(totals.p)}g</Text>
-                    <Text style={[styles.macroText, { color: theme.colors.carbs }]}>C {Math.round(totals.c)}g</Text>
-                    <Text style={[styles.macroText, { color: theme.colors.fat }]}>F {Math.round(totals.f)}g</Text>
-                    <Text style={[styles.macroText, { color: theme.colors.textTertiary }]}>{item.ingredients?.length ?? 0} ingr.</Text>
-                  </View>
-                </Pressable>
-              )
-            }}
-            ListEmptyComponent={
-              mealsLoading ? (
-                <LoadingState minHeight={200} />
-              ) : mealsError ? (
-                <ErrorState message="Couldn't load your meals." onRetry={refetchMeals} />
-              ) : (
-                <EmptyState icon="book-outline" title="No saved meals yet" subtitle="Create meals on the Meals tab" />
-              )
-            }
-          />
+          <View style={{ flex: 1 }}>
+            {meals.length > 0 && (
+              <View style={styles.searchArea}>
+                <View style={[styles.searchBox, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
+                  <Ionicons name="search" size={17} color={theme.colors.textTertiary} />
+                  <TextInput
+                    placeholder={t('meals.searchPlaceholder')}
+                    placeholderTextColor={theme.colors.textTertiary}
+                    value={mealQuery}
+                    onChangeText={setMealQuery}
+                    style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+                  />
+                </View>
+              </View>
+            )}
+            <FlatList
+              data={filteredMeals}
+              keyExtractor={(m) => m.id}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <MealCard
+                  meal={item}
+                  onSelect={onSelectMeal}
+                  expanded={expandedMealId === item.id}
+                  onToggleExpand={() => setExpandedMealId((prev) => (prev === item.id ? null : item.id))}
+                />
+              )}
+              ListEmptyComponent={
+                mealsLoading ? (
+                  <LoadingState minHeight={200} />
+                ) : mealsError ? (
+                  <ErrorState message={t('food.loadMealsError')} onRetry={refetchMeals} />
+                ) : mealQuery.trim() ? (
+                  <EmptyState icon="search-outline" title={t('food.noResultsTitle')} />
+                ) : (
+                  <EmptyState icon="book-outline" title={t('food.emptyMealsTitle')} subtitle={t('food.emptyMealsSubtitle')} />
+                )
+              }
+            />
+          </View>
         )}
       </ModalScreen>
 
       <CameraScannerModal
         visible={showScanner}
-        title="Scan Barcode"
-        hint="Point camera at a product barcode"
+        title={t('food.scanBarcodeTitle')}
+        hint={t('food.scanBarcodeHint')}
         types={BARCODE_TYPES}
         shape="wide"
         onScan={handleScan}
@@ -369,7 +458,7 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
       <PaywallModal
         visible={favoritePaywall}
         productId="unlimited_meals_favorites"
-        headline="Save unlimited favorites"
+        headline={t('food.paywallFavoritesHeadline')}
         onClose={() => setFavoritePaywall(false)}
       />
     </>
@@ -390,6 +479,10 @@ const styles = StyleSheet.create({
   macroRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   macroText: { fontSize: 11, fontWeight: '600' },
   favBtn: { width: 46, alignItems: 'center', justifyContent: 'center', borderLeftWidth: StyleSheet.hairlineWidth },
+  mealCard: { overflow: 'hidden' },
+  expandBtn: { width: 46, alignItems: 'center', justifyContent: 'center', borderLeftWidth: StyleSheet.hairlineWidth },
+  ingredientRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth },
+  ingredientName: { fontSize: 13, flexShrink: 1 },
   searchArea: { paddingHorizontal: 16, paddingTop: 14 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 11 },
   searchInput: { flex: 1, fontSize: 14 },

@@ -10,22 +10,23 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../theme/ThemeProvider'
 import { Screen } from '../components/Screen'
 
 interface PasswordRule {
-  label: string
+  labelKey: string
   test: (pw: string) => boolean
 }
 
 const PASSWORD_RULES: PasswordRule[] = [
-  { label: 'At least 8 characters', test: (pw) => pw.length >= 8 },
-  { label: '1 uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
-  { label: '1 lowercase letter', test: (pw) => /[a-z]/.test(pw) },
-  { label: '1 number', test: (pw) => /\d/.test(pw) },
-  { label: '1 symbol (!@#...)', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+  { labelKey: 'auth.passwordRuleMinLength', test: (pw) => pw.length >= 8 },
+  { labelKey: 'auth.passwordRuleUpper', test: (pw) => /[A-Z]/.test(pw) },
+  { labelKey: 'auth.passwordRuleLower', test: (pw) => /[a-z]/.test(pw) },
+  { labelKey: 'auth.passwordRuleNumber', test: (pw) => /\d/.test(pw) },
+  { labelKey: 'auth.passwordRuleSymbol', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
 ]
 
 function validatePassword(pw: string) {
@@ -34,6 +35,7 @@ function validatePassword(pw: string) {
 
 export default function AuthScreen() {
   const theme = useTheme()
+  const { t } = useTranslation()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
@@ -48,9 +50,9 @@ export default function AuthScreen() {
     setError(null)
 
     if (mode === 'register') {
-      if (!name.trim()) { setError('Please enter your name.'); return }
-      if (!validatePassword(password)) { setError('Password does not meet requirements.'); return }
-      if (password !== confirm) { setError('Passwords do not match.'); return }
+      if (!name.trim()) { setError(t('auth.errorNameRequired')); return }
+      if (!validatePassword(password)) { setError(t('auth.errorPasswordRequirements')); return }
+      if (password !== confirm) { setError(t('auth.errorPasswordsMismatch')); return }
 
       setLoading(true)
       const { error: signUpError } = await supabase.auth.signUp({
@@ -95,22 +97,22 @@ export default function AuthScreen() {
           <View style={[styles.iconCircle, { backgroundColor: theme.colors.accentSoft, width: 80, height: 80, borderRadius: 40 }]}>
             <Ionicons name="mail-outline" size={36} color={theme.colors.accent} />
           </View>
-          <Text style={[styles.title, { color: theme.colors.textPrimary, marginTop: 20 }]}>Check your email</Text>
+          <Text style={[styles.title, { color: theme.colors.textPrimary, marginTop: 20 }]}>{t('auth.checkEmailTitle')}</Text>
           <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            We sent a confirmation link to{'\n'}
+            {t('auth.checkEmailBody', { email: '' }).trimEnd()}{'\n'}
             <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{email}</Text>
           </Text>
           <Text style={[styles.hint, { color: theme.colors.textTertiary }]}>
-            Click the link in the email to activate your account, then come back and sign in.
+            {t('auth.checkEmailInstructions')}
           </Text>
           <Pressable
             onPress={() => { setPendingConfirm(false); setMode('login') }}
             style={[styles.primaryButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4, marginTop: 28 }]}
           >
-            <Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>Go to Sign In</Text>
+            <Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>{t('auth.goToSignIn')}</Text>
           </Pressable>
           <Pressable onPress={handleResend} style={{ paddingVertical: 12 }}>
-            <Text style={{ color: theme.colors.textTertiary, fontSize: 13 }}>Resend confirmation email</Text>
+            <Text style={{ color: theme.colors.textTertiary, fontSize: 13 }}>{t('auth.resendConfirmation')}</Text>
           </Pressable>
         </View>
       </Screen>
@@ -127,8 +129,8 @@ export default function AuthScreen() {
           <View style={[styles.iconCircle, { backgroundColor: theme.colors.accentSoft }]}>
             <Ionicons name="barbell-outline" size={30} color={theme.colors.accent} />
           </View>
-          <Text style={[styles.appName, { color: theme.colors.textPrimary }]}>MacroTrack</Text>
-          <Text style={[styles.tagline, { color: theme.colors.textSecondary }]}>Track your nutrition, reach your goals</Text>
+          <Text style={[styles.appName, { color: theme.colors.textPrimary }]}>{t('auth.appName')}</Text>
+          <Text style={[styles.tagline, { color: theme.colors.textSecondary }]}>{t('auth.tagline')}</Text>
         </View>
 
         <View style={[styles.segment, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 4 }]}>
@@ -143,7 +145,7 @@ export default function AuthScreen() {
               ]}
             >
               <Text style={[styles.segmentText, { color: mode === m ? theme.colors.onAccent : theme.colors.textSecondary }]}>
-                {m === 'login' ? 'Sign In' : 'Sign Up'}
+                {m === 'login' ? t('auth.signIn') : t('auth.signUp')}
               </Text>
             </Pressable>
           ))}
@@ -152,7 +154,7 @@ export default function AuthScreen() {
         <View style={{ gap: 12, marginTop: 20 }}>
           {mode === 'register' && (
             <TextInput
-              placeholder="Full name"
+              placeholder={t('auth.fullNamePlaceholder')}
               placeholderTextColor={theme.colors.textTertiary}
               value={name}
               onChangeText={setName}
@@ -161,7 +163,7 @@ export default function AuthScreen() {
             />
           )}
           <TextInput
-            placeholder="Email address"
+            placeholder={t('auth.emailPlaceholder')}
             placeholderTextColor={theme.colors.textTertiary}
             value={email}
             onChangeText={setEmail}
@@ -171,7 +173,7 @@ export default function AuthScreen() {
             autoComplete="email"
           />
           <TextInput
-            placeholder="Password"
+            placeholder={t('auth.passwordPlaceholder')}
             placeholderTextColor={theme.colors.textTertiary}
             value={password}
             onChangeText={setPassword}
@@ -184,14 +186,14 @@ export default function AuthScreen() {
               {PASSWORD_RULES.map((rule) => {
                 const ok = rule.test(password)
                 return (
-                  <View key={rule.label} style={styles.ruleRow}>
+                  <View key={rule.labelKey} style={styles.ruleRow}>
                     <Ionicons
                       name={ok ? 'checkmark' : 'close'}
                       size={13}
                       color={ok ? theme.colors.success : theme.colors.textTertiary}
                     />
                     <Text style={{ fontSize: 12, color: ok ? theme.colors.success : theme.colors.textSecondary }}>
-                      {rule.label}
+                      {t(rule.labelKey)}
                     </Text>
                   </View>
                 )
@@ -200,7 +202,7 @@ export default function AuthScreen() {
           )}
           {mode === 'register' && (
             <TextInput
-              placeholder="Confirm password"
+              placeholder={t('auth.confirmPasswordPlaceholder')}
               placeholderTextColor={theme.colors.textTertiary}
               value={confirm}
               onChangeText={setConfirm}
@@ -236,7 +238,7 @@ export default function AuthScreen() {
             <ActivityIndicator color={theme.colors.onAccent} />
           ) : (
             <Text style={[styles.primaryButtonText, { color: theme.colors.onAccent }]}>
-              {mode === 'login' ? 'Sign In' : 'Create Account'}
+              {mode === 'login' ? t('auth.signIn') : t('auth.createAccount')}
             </Text>
           )}
         </Pressable>

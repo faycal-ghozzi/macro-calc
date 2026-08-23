@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../theme/ThemeProvider'
 
 interface ErrorStateProps {
@@ -7,12 +8,13 @@ interface ErrorStateProps {
   onRetry?: () => void
 }
 
-export function ErrorState({ message = 'Something went wrong.', onRetry }: ErrorStateProps) {
+export function ErrorState({ message, onRetry }: ErrorStateProps) {
   const theme = useTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.container}>
       <Ionicons name="alert-circle-outline" size={28} color={theme.colors.danger} />
-      <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
+      <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message ?? t('errorState.defaultMessage')}</Text>
       {onRetry ? (
         <Pressable
           onPress={onRetry}
@@ -21,7 +23,7 @@ export function ErrorState({ message = 'Something went wrong.', onRetry }: Error
             { backgroundColor: theme.colors.accentSoft, opacity: pressed ? 0.7 : 1 },
           ]}
         >
-          <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 13 }}>Try again</Text>
+          <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 13 }}>{t('errorState.tryAgain')}</Text>
         </Pressable>
       ) : null}
     </View>

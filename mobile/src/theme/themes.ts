@@ -15,6 +15,7 @@ export interface ThemeColors {
   protein: string
   carbs: string
   fat: string
+  water: string
   success: string
   warning: string
   danger: string
@@ -34,8 +35,8 @@ export interface ThemeStyle {
 
 export interface Theme {
   id: ThemeId
-  name: string
-  tagline: string
+  nameKey: string
+  taglineKey: string
   mode: 'dark' | 'light'
   colors: ThemeColors
   style: ThemeStyle
@@ -45,8 +46,8 @@ export interface Theme {
 export const THEMES: Record<ThemeId, Theme> = {
   dark: {
     id: 'dark',
-    name: 'Midnight',
-    tagline: 'Premium dark, refined contrast',
+    nameKey: 'themes.midnightName',
+    taglineKey: 'themes.midnightTagline',
     mode: 'dark',
     colors: {
       background: '#0B0D10',
@@ -63,6 +64,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       protein: '#34D399',
       carbs: '#60A5FA',
       fat: '#F472B6',
+      water: '#22D3EE',
       success: '#34D399',
       warning: '#FBBF24',
       danger: '#F87171',
@@ -82,8 +84,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   light: {
     id: 'light',
-    name: 'Daylight',
-    tagline: 'Clean, minimal, high contrast',
+    nameKey: 'themes.daylightName',
+    taglineKey: 'themes.daylightTagline',
     mode: 'light',
     colors: {
       background: '#FFFFFF',
@@ -100,6 +102,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       protein: '#4F46E5',
       carbs: '#0284C7',
       fat: '#DB2777',
+      water: '#0891B2',
       success: '#059669',
       warning: '#D97706',
       danger: '#DC2626',
@@ -119,8 +122,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   warm: {
     id: 'warm',
-    name: 'Terra',
-    tagline: 'Warm, earthy, softer wellness feel',
+    nameKey: 'themes.terraName',
+    taglineKey: 'themes.terraTagline',
     mode: 'light',
     colors: {
       background: '#FBF3EA',
@@ -137,6 +140,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       protein: '#6B8E5A',
       carbs: '#D4A537',
       fat: '#8C7355',
+      water: '#4A90A4',
       success: '#6B8E5A',
       warning: '#D4A537',
       danger: '#B5533C',
@@ -156,8 +160,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   bold: {
     id: 'bold',
-    name: 'Voltage',
-    tagline: 'High-contrast, vibrant, energetic',
+    nameKey: 'themes.voltageName',
+    taglineKey: 'themes.voltageTagline',
     mode: 'dark',
     colors: {
       background: '#08080D',
@@ -174,6 +178,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       protein: '#39FF88',
       carbs: '#FFD23D',
       fat: '#8B5CFF',
+      water: '#00E5FF',
       success: '#39FF88',
       warning: '#FFD23D',
       danger: '#FF4D6D',

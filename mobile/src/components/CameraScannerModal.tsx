@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Modal, Animated, Platform, PermissionsAndroid } from 'react-native'
 import { Camera, CameraType, type CameraApi, type CodeFormat } from 'react-native-camera-kit'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { useTheme } from '../theme/ThemeProvider'
 
@@ -23,6 +24,7 @@ const GREEN = '#22C55E'
 
 export function CameraScannerModal({ visible, title, hint, types, shape, onScan, onClose }: CameraScannerModalProps) {
   const theme = useTheme()
+  const { t } = useTranslation()
   const cameraRef = useRef<CameraApi>(null)
   const firedRef = useRef(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
@@ -61,7 +63,7 @@ export function CameraScannerModal({ visible, title, hint, types, shape, onScan,
     setDetected(false)
     pulse.setValue(0)
     checkPermission().then(setHasPermission)
-  }, [visible])
+  }, [visible, pulse])
 
   function handleReadCode(event: { nativeEvent: { codeStringValue: string } }) {
     setDetected(true)
@@ -102,13 +104,13 @@ export function CameraScannerModal({ visible, title, hint, types, shape, onScan,
             <View style={styles.permissionBox}>
               <Ionicons name="camera-outline" size={32} color={theme.colors.textTertiary} />
               <Text style={[styles.permissionText, { color: theme.colors.textSecondary }]}>
-                Camera access is needed to scan.
+                {t('camera.permissionText')}
               </Text>
               <Pressable
                 onPress={requestPermission}
                 style={[styles.grantButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 6 }]}
               >
-                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>Allow Camera</Text>
+                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>{t('camera.allowCamera')}</Text>
               </Pressable>
             </View>
           ) : (

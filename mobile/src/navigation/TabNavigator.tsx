@@ -1,16 +1,19 @@
 import { useRef } from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
+import type { NavigatorScreenParams } from '@react-navigation/native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { View, Pressable, StyleSheet, Platform } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { BlurView } from '@react-native-community/blur'
 import DashboardScreen from '../screens/DashboardScreen'
 import FoodLogScreen from '../screens/FoodLogScreen'
 import MealsScreen from '../screens/MealsScreen'
 import ProgressScreen from '../screens/ProgressScreen'
-import ProfileScreen from '../screens/ProfileScreen'
+import { ProfileStackNavigator } from './ProfileStackNavigator'
+import type { ProfileStackParamList } from './ProfileStackNavigator'
 import { useTheme } from '../theme/ThemeProvider'
 import { useTour } from '../contexts/TourContext'
 import type { MealType } from '../types'
@@ -20,7 +23,7 @@ export type TabParamList = {
   Log: { meal?: MealType; date?: string } | undefined
   Meals: undefined
   Progress: undefined
-  Profile: undefined
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined
 }
 
 const Tab = createBottomTabNavigator<TabParamList>()
@@ -70,13 +73,23 @@ const ICONS: Record<keyof TabParamList, string> = {
   Profile: 'person',
 }
 
+const TAB_LABEL_KEYS: Record<keyof TabParamList, string> = {
+  Dashboard: 'tabs.dashboard',
+  Log: 'tabs.log',
+  Meals: 'tabs.meals',
+  Progress: 'tabs.progress',
+  Profile: 'tabs.profile',
+}
+
 export function TabNavigator() {
   const theme = useTheme()
+  const { t } = useTranslation()
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarLabel: t(TAB_LABEL_KEYS[route.name as keyof TabParamList]),
         tabBarShowLabel: true,
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textTertiary,
@@ -117,7 +130,7 @@ export function TabNavigator() {
       <Tab.Screen name="Log" component={FoodLogScreen} />
       <Tab.Screen name="Meals" component={MealsScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   )
 }

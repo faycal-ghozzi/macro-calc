@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
@@ -16,12 +17,17 @@ import { useWeightLog } from '../hooks/useWeightLog'
 import { useReports } from '../hooks/useReports'
 import { useProfile } from '../hooks/useProfile'
 import { useEntitlements } from '../hooks/useEntitlements'
+import { useUnitsStore } from '../store/useUnitsStore'
 import { calculateMacroTargets } from '../lib/macroCalc'
+import { weightUnitLabel, kgToDisplayValue, displayValueToKg, weightBounds, formatWeightDelta, formatMass, gToDisplayValue, massUnitLabel } from '../lib/units'
 
 type Tab = 'weekly' | 'monthly' | 'weight'
 
 export default function ProgressScreen() {
   const theme = useTheme()
+  const { t, i18n } = useTranslation()
+  const { system } = useUnitsStore()
+  const weightUnit = weightUnitLabel(system)
   const [tab, setTab] = useState<Tab>('weekly')
   const { entries, loading: wLoading, addEntry, deleteEntry, latestEntry, totalChange } = useWeightLog()
   const { weekly, monthly, loading: rLoading } = useReports()
@@ -38,8 +44,10 @@ export default function ProgressScreen() {
   const [showWeightForm, setShowWeightForm] = useState(false)
 
   async function handleAddWeight() {
-    const kg = Number.parseFloat(weight)
-    if (!kg || kg < 20 || kg > 500) return
+    const value = Number.parseFloat(weight)
+    const { min, max } = weightBounds(system)
+    if (!value || value < min || value > max) return
+    const kg = displayValueToKg(value, system)
     setSavingWeight(true)
     await addEntry(kg, weightDate.toISOString().split('T')[0], weightNotes || undefined)
     setSavingWeight(false)
@@ -59,28 +67,27 @@ export default function ProgressScreen() {
   return (
     <Screen contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8 }}>
       <View style={styles.topRow}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Progress</Text>
         {tab === 'weight' && (
           <Pressable onPress={() => { Haptics.selectionAsync(); setShowWeightForm((v) => !v) }} style={[styles.headerBtn, { backgroundColor: theme.colors.accentSoft }]}>
             <Ionicons name="add" size={14} color={theme.colors.accent} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>Log</Text>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>{t('progress.log')}</Text>
           </Pressable>
         )}
       </View>
 
       <View style={[styles.tabBar, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
-        {(['weekly', 'monthly', 'weight'] as Tab[]).map((t) => (
+        {(['weekly', 'monthly', 'weight'] as Tab[]).map((tabKey) => (
           <Pressable
-            key={t}
+            key={tabKey}
             onPress={() => {
               Haptics.selectionAsync()
-              if (t === 'monthly' && !flags.hasMonthlyReports) { setShowReportsPaywall(true); return }
-              setTab(t)
+              if (tabKey === 'monthly' && !flags.hasMonthlyReports) { setShowReportsPaywall(true); return }
+              setTab(tabKey)
             }}
-            style={[styles.tabButton, { borderRadius: theme.style.cardRadius - 10 }, tab === t && { backgroundColor: theme.colors.accent }]}
+            style={[styles.tabButton, { borderRadius: theme.style.cardRadius - 10 }, tab === tabKey && { backgroundColor: theme.colors.accent }]}
           >
-            <Text style={{ fontSize: 12, fontWeight: '700', color: tab === t ? theme.colors.onAccent : theme.colors.textSecondary }}>
-              {t === 'weekly' ? '7 Days' : t === 'monthly' ? '30 Days' : 'Weight'}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: tab === tabKey ? theme.colors.onAccent : theme.colors.textSecondary }}>
+              {tabKey === 'weekly' ? t('progress.tab7Days') : tabKey === 'monthly' ? t('progress.tab30Days') : t('progress.tabWeight')}
             </Text>
           </Pressable>
         ))}
@@ -91,19 +98,19 @@ export default function ProgressScreen() {
           {latestEntry && (
             <View style={styles.statsRow}>
               <Card style={styles.statCell}>
-                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{latestEntry.weight_kg}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Current (kg)</Text>
+                <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{Math.round(kgToDisplayValue(latestEntry.weight_kg, system) * 10) / 10}</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>{t('progress.statCurrent', { unit: weightUnit })}</Text>
               </Card>
               <Card style={styles.statCell}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Ionicons name={trendIcon as any} size={14} color={trendColor} />
-                  <Text style={[styles.statValue, { color: trendColor }]}>{Math.abs(totalChange).toFixed(1)}</Text>
+                  <Text style={[styles.statValue, { color: trendColor }]}>{Math.abs(kgToDisplayValue(totalChange, system)).toFixed(1)}</Text>
                 </View>
-                <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Total Δ</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>{t('progress.statTotalDelta')}</Text>
               </Card>
               <Card style={styles.statCell}>
                 <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>{entries.length}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>Entries</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.textTertiary }]}>{t('progress.statEntries')}</Text>
               </Card>
             </View>
           )}
@@ -112,7 +119,7 @@ export default function ProgressScreen() {
             <Card style={{ gap: 10 }}>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TextInput
-                  placeholder="Weight (kg)"
+                  placeholder={t('progress.weightPlaceholder', { unit: weightUnit })}
                   placeholderTextColor={theme.colors.textTertiary}
                   value={weight}
                   onChangeText={setWeight}
@@ -123,7 +130,7 @@ export default function ProgressScreen() {
                   onPress={() => setShowDatePicker(true)}
                   style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8, justifyContent: 'center' }]}
                 >
-                  <Text style={{ color: theme.colors.textPrimary, fontSize: 13 }}>{weightDate.toISOString().split('T')[0]}</Text>
+                  <Text style={{ color: theme.colors.textPrimary, fontSize: 13 }}>{weightDate.toLocaleDateString(i18n.language)}</Text>
                 </Pressable>
               </View>
               {showDatePicker && (
@@ -136,7 +143,7 @@ export default function ProgressScreen() {
                 />
               )}
               <TextInput
-                placeholder="Notes (optional)"
+                placeholder={t('progress.notesPlaceholder')}
                 placeholderTextColor={theme.colors.textTertiary}
                 value={weightNotes}
                 onChangeText={setWeightNotes}
@@ -148,14 +155,14 @@ export default function ProgressScreen() {
                 style={[styles.primaryButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 8, opacity: savingWeight || !weight ? 0.5 : 1 }]}
               >
                 {savingWeight ? <ActivityIndicator color={theme.colors.onAccent} /> : null}
-                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>Save</Text>
+                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>{t('progress.save')}</Text>
               </Pressable>
             </Card>
           )}
 
           {entries.length >= 2 && (
             <Card>
-              <Text style={[styles.cardHeading, { color: theme.colors.textPrimary }]}>Weight History</Text>
+              <Text style={[styles.cardHeading, { color: theme.colors.textPrimary }]}>{t('progress.weightHistory')}</Text>
               <WeightLineChart data={weightChartData} />
             </Card>
           )}
@@ -163,7 +170,7 @@ export default function ProgressScreen() {
           {wLoading ? (
             <LoadingState minHeight={120} />
           ) : entries.length === 0 ? (
-            <EmptyState icon="trending-up-outline" title="No weight entries yet" subtitle="Tap Log to record your first weight" />
+            <EmptyState icon="trending-up-outline" title={t('progress.emptyTitle')} subtitle={t('progress.emptySubtitle')} />
           ) : (
             <View style={{ gap: 8 }}>
               {[...entries].reverse().map((entry, i) => {
@@ -172,7 +179,7 @@ export default function ProgressScreen() {
                 return (
                   <Card key={entry.id} style={styles.entryRow}>
                     <View>
-                      <Text style={[styles.entryWeight, { color: theme.colors.textPrimary }]}>{entry.weight_kg} kg</Text>
+                      <Text style={[styles.entryWeight, { color: theme.colors.textPrimary }]}>{Math.round(kgToDisplayValue(entry.weight_kg, system) * 10) / 10} {weightUnit}</Text>
                       <Text style={[styles.entryMeta, { color: theme.colors.textTertiary }]}>
                         {entry.logged_at}{entry.notes ? ` · ${entry.notes}` : ''}
                       </Text>
@@ -180,7 +187,7 @@ export default function ProgressScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       {diff !== null && (
                         <Text style={{ fontSize: 12, fontWeight: '700', color: diff < 0 ? theme.colors.success : diff > 0 ? theme.colors.danger : theme.colors.textTertiary }}>
-                          {diff > 0 ? '+' : ''}{diff.toFixed(1)} kg
+                          {formatWeightDelta(diff, system)}
                         </Text>
                       )}
                       <Pressable onPress={() => { Haptics.selectionAsync(); deleteEntry(entry.id) }}>
@@ -202,38 +209,38 @@ export default function ProgressScreen() {
           <View style={{ gap: 12 }}>
             <View style={styles.statsGrid}>
               <Card style={styles.gridCell}>
-                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>Avg daily calories</Text>
+                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.avgDailyCalories')}</Text>
                 <Text style={[styles.gridValue, { color: theme.colors.textPrimary }]}>{report.avg_calories}</Text>
-                {targets && <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>target {targets.calories}</Text>}
+                {targets && <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.targetSuffix', { value: targets.calories })}</Text>}
               </Card>
               <Card style={styles.gridCell}>
-                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>Avg net calories</Text>
+                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.avgNetCalories')}</Text>
                 <Text style={[styles.gridValue, { color: theme.colors.accent }]}>{report.avg_net_calories}</Text>
-                <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>after exercise</Text>
+                <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.afterExercise')}</Text>
               </Card>
               <Card style={styles.gridCell}>
-                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>Total burned</Text>
-                <Text style={[styles.gridValue, { color: theme.colors.calories }]}>{report.total_burned} kcal</Text>
-                <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{report.active_days} active days</Text>
+                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.totalBurned')}</Text>
+                <Text style={[styles.gridValue, { color: theme.colors.calories }]}>{report.total_burned} {t('common.kcal')}</Text>
+                <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.activeDays', { count: report.active_days })}</Text>
               </Card>
               <Card style={styles.gridCell}>
-                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>Avg protein</Text>
-                <Text style={[styles.gridValue, { color: theme.colors.protein }]}>{report.avg_protein}g</Text>
-                {targets && <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>target {targets.protein_g}g</Text>}
+                <Text style={[styles.gridLabel, { color: theme.colors.textTertiary }]}>{t('progress.avgProtein')}</Text>
+                <Text style={[styles.gridValue, { color: theme.colors.protein }]}>{formatMass(report.avg_protein, system)}</Text>
+                {targets && <Text style={[styles.gridSub, { color: theme.colors.textTertiary }]}>{t('progress.targetSuffix', { value: formatMass(targets.protein_g, system) })}</Text>}
               </Card>
             </View>
 
             {calChartData.some((d) => d.consumed > 0) && (
               <Card>
-                <Text style={[styles.cardHeading, { color: theme.colors.textPrimary }]}>Daily Calories</Text>
+                <Text style={[styles.cardHeading, { color: theme.colors.textPrimary }]}>{t('progress.dailyCalories')}</Text>
                 <View style={styles.legendRow}>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: theme.colors.accent }]} />
-                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>Consumed</Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{t('progress.consumed')}</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: theme.colors.calories }]} />
-                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>Burned</Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{t('progress.burned')}</Text>
                   </View>
                 </View>
                 <CalorieBarChart data={calChartData} target={targets?.calories} />
@@ -241,29 +248,50 @@ export default function ProgressScreen() {
             )}
 
             <Card style={{ gap: 12 }}>
-              <Text style={[styles.cardHeading, { color: theme.colors.textPrimary }]}>Avg Macros / day</Text>
-              <MacroBar label="Protein" current={report.avg_protein} target={targets?.protein_g ?? (report.avg_protein || 1)} color={theme.colors.protein} />
-              <MacroBar label="Carbs" current={report.avg_carbs} target={targets?.carbs_g ?? (report.avg_carbs || 1)} color={theme.colors.carbs} />
-              <MacroBar label="Fat" current={report.avg_fat} target={targets?.fat_g ?? (report.avg_fat || 1)} color={theme.colors.fat} />
+              <Text style={[styles.cardHeading, { color: theme.colors.textPrimary }]}>{t('progress.avgMacrosPerDay')}</Text>
+              <MacroBar
+                label={t('macros.protein')}
+                current={gToDisplayValue(report.avg_protein, system)}
+                target={gToDisplayValue(targets?.protein_g ?? (report.avg_protein || 1), system)}
+                color={theme.colors.protein}
+                unit={massUnitLabel(system)}
+                decimals={system === 'imperial' ? 1 : 0}
+              />
+              <MacroBar
+                label={t('macros.carbs')}
+                current={gToDisplayValue(report.avg_carbs, system)}
+                target={gToDisplayValue(targets?.carbs_g ?? (report.avg_carbs || 1), system)}
+                color={theme.colors.carbs}
+                unit={massUnitLabel(system)}
+                decimals={system === 'imperial' ? 1 : 0}
+              />
+              <MacroBar
+                label={t('macros.fat')}
+                current={gToDisplayValue(report.avg_fat, system)}
+                target={gToDisplayValue(targets?.fat_g ?? (report.avg_fat || 1), system)}
+                color={theme.colors.fat}
+                unit={massUnitLabel(system)}
+                decimals={system === 'imperial' ? 1 : 0}
+              />
             </Card>
 
             <View style={{ gap: 8 }}>
-              <Text style={[styles.sectionLabel, { color: theme.colors.textTertiary }]}>Day by day</Text>
+              <Text style={[styles.sectionLabel, { color: theme.colors.textTertiary }]}>{t('progress.dayByDay')}</Text>
               {[...report.days].reverse().map((day) => (
                 <Card key={day.date} style={{ opacity: day.calories === 0 ? 0.4 : 1 }}>
                   <View style={styles.dayRow}>
                     <Text style={[styles.dayDate, { color: theme.colors.textPrimary }]}>{day.date}</Text>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <Text style={{ fontSize: 12, color: theme.colors.accent }}>{Math.round(day.calories)} in</Text>
-                      {day.calories_burned > 0 && <Text style={{ fontSize: 12, color: theme.colors.calories }}>−{Math.round(day.calories_burned)} out</Text>}
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary }}>{Math.round(day.net_calories)} net</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.accent }}>{t('progress.netIn', { value: Math.round(day.calories) })}</Text>
+                      {day.calories_burned > 0 && <Text style={{ fontSize: 12, color: theme.colors.calories }}>{t('progress.netOut', { value: Math.round(day.calories_burned) })}</Text>}
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary }}>{t('progress.netTotal', { value: Math.round(day.net_calories) })}</Text>
                     </View>
                   </View>
                   {day.calories > 0 && (
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                      <Text style={{ fontSize: 10, color: theme.colors.protein }}>P {Math.round(day.protein_g)}g</Text>
-                      <Text style={{ fontSize: 10, color: theme.colors.carbs }}>C {Math.round(day.carbs_g)}g</Text>
-                      <Text style={{ fontSize: 10, color: theme.colors.fat }}>F {Math.round(day.fat_g)}g</Text>
+                      <Text style={{ fontSize: 10, color: theme.colors.protein }}>P {formatMass(day.protein_g, system)}</Text>
+                      <Text style={{ fontSize: 10, color: theme.colors.carbs }}>C {formatMass(day.carbs_g, system)}</Text>
+                      <Text style={{ fontSize: 10, color: theme.colors.fat }}>F {formatMass(day.fat_g, system)}</Text>
                     </View>
                   )}
                 </Card>
@@ -276,7 +304,7 @@ export default function ProgressScreen() {
       <PaywallModal
         visible={showReportsPaywall}
         productId="advanced_reports"
-        headline="Unlock monthly trends"
+        headline={t('progress.paywallHeadline')}
         onClose={() => setShowReportsPaywall(false)}
       />
     </Screen>
@@ -284,8 +312,7 @@ export default function ProgressScreen() {
 }
 
 const styles = StyleSheet.create({
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  title: { fontSize: 19, fontWeight: '700' },
+  topRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 14 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12 },
   tabBar: { flexDirection: 'row', padding: 4, gap: 4, marginBottom: 16 },
   tabButton: { flex: 1, alignItems: 'center', paddingVertical: 10 },

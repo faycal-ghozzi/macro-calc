@@ -1,8 +1,10 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../theme/ThemeProvider'
 import { PRODUCTS, type ProductId } from '../lib/products'
 import { activeIndividualCount, bundleSavings } from '../lib/entitlements'
+import { mirrorChevron } from '../lib/rtl'
 
 interface BundleNudgeBannerProps {
   activeProductIds: ProductId[]
@@ -12,6 +14,7 @@ interface BundleNudgeBannerProps {
 
 export function BundleNudgeBanner({ activeProductIds, billing = 'monthly', onPress }: BundleNudgeBannerProps) {
   const theme = useTheme()
+  const { t } = useTranslation()
 
   if (activeProductIds.includes('pro_bundle')) return null
   if (activeIndividualCount(activeProductIds) < 2) return null
@@ -29,13 +32,17 @@ export function BundleNudgeBanner({ activeProductIds, billing = 'monthly', onPre
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-          Switch to {PRODUCTS.pro_bundle.name} and save ${savings.toFixed(2)}/{billing === 'monthly' ? 'mo' : 'yr'}
+          {t('bundleNudge.switchAndSave', {
+            name: t(PRODUCTS.pro_bundle.nameKey),
+            savings: savings.toFixed(2),
+            period: billing === 'monthly' ? 'mo' : 'yr',
+          })}
         </Text>
         <Text style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2 }}>
-          You're paying for {activeIndividualCount(activeProductIds)} add-ons separately
+          {t('bundleNudge.payingSeparately', { count: activeIndividualCount(activeProductIds) })}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+      <Ionicons name={mirrorChevron('chevron-forward')} size={16} color={theme.colors.textTertiary} />
     </Pressable>
   )
 }

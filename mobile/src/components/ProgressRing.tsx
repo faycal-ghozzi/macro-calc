@@ -32,7 +32,7 @@ export function ProgressRing({ size, progress, color, trackOpacity, thickness, c
       duration: 900,
       easing: Easing.out(Easing.cubic),
     })
-  }, [progress])
+  }, [progress, clamped])
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference * (1 - clamped.value),

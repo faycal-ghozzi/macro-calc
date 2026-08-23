@@ -1,4 +1,5 @@
 import { Alert } from 'react-native'
+import i18next from '../i18n'
 import type { ProductId } from './products'
 
 // No RevenueCat/store account exists yet, so purchases can't actually go
@@ -7,11 +8,11 @@ import type { ProductId } from './products'
 // touching any call site.
 
 export async function purchaseProduct(_productId: ProductId): Promise<boolean> {
-  Alert.alert('Coming soon', "Subscriptions aren't live yet - check back soon!")
+  Alert.alert(i18next.t('common.comingSoonTitle'), i18next.t('common.comingSoonBody'))
   return false
 }
 
 export async function restorePurchases(): Promise<boolean> {
-  Alert.alert('Coming soon', "Subscriptions aren't live yet - check back soon!")
+  Alert.alert(i18next.t('common.comingSoonTitle'), i18next.t('common.comingSoonBody'))
   return false
 }

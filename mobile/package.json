@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@react-native-community/blur": "^4.4.1",
     "@react-native-community/datetimepicker": "^9.1.0",
@@ -19,12 +20,15 @@
     "@react-navigation/native-stack": "^7.17.10",
     "@supabase/supabase-js": "^2.110.2",
     "dayjs": "^1.11.21",
+    "i18next": "^26.4.0",
     "react": "19.2.3",
+    "react-i18next": "^17.0.12",
     "react-native": "0.86.0",
     "react-native-camera-kit": "^18.0.0",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "^3.0.2",
     "react-native-haptic-feedback": "^3.0.0",
+    "react-native-localize": "^3.7.0",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-reanimated": "^4.5.1",
     "react-native-safe-area-context": "^5.5.2",

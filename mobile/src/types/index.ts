@@ -7,6 +7,9 @@ export interface Profile {
   goal: 'lose' | 'maintain' | 'gain'
   activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
   current_weight_kg: number | null
+  water_goal_ml: number
+  protein_per_kg: number
+  fat_per_kg: number
   deletion_requested_at: string | null
 }
 
@@ -32,6 +35,14 @@ export interface WeightEntry {
   weight_kg: number
   logged_at: string
   notes?: string
+  created_at: string
+}
+
+export interface WaterLog {
+  id: string
+  user_id: string
+  logged_at: string
+  amount_ml: number
   created_at: string
 }
 
@@ -64,7 +75,7 @@ export interface FoodLog {
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
-export type MeasurementUnit = 'g' | 'ml' | 'cl' | 'L' | 'tbsp' | 'tsp' | 'piece'
+export type MeasurementUnit = 'g' | 'oz' | 'lb' | 'ml' | 'cl' | 'L' | 'tbsp' | 'tsp' | 'piece'
 
 export interface FoodItem {
   name: string

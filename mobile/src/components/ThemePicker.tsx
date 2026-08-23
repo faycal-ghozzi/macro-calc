@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { useTheme } from '../theme/ThemeProvider'
 import { useThemeStore } from '../store/useThemeStore'
@@ -10,6 +11,7 @@ import { PaywallModal } from './PaywallModal'
 
 export function ThemePicker() {
   const theme = useTheme()
+  const { t } = useTranslation()
   const themeId = useThemeStore((s) => s.themeId)
   const setThemeId = useThemeStore((s) => s.setThemeId)
   const { flags } = useEntitlements()
@@ -18,7 +20,7 @@ export function ThemePicker() {
   return (
     <View style={{ gap: 10 }}>
       {THEME_ORDER.map((id) => {
-        const t = THEMES[id]
+        const entry = THEMES[id]
         const selected = id === themeId
         const locked = id !== 'dark' && !flags.hasAllThemes
         return (
@@ -41,13 +43,13 @@ export function ThemePicker() {
             ]}
           >
             <View style={styles.swatchStack}>
-              {t.swatch.map((c, i) => (
+              {entry.swatch.map((c, i) => (
                 <View key={i} style={[styles.swatchDot, { backgroundColor: c, marginLeft: i === 0 ? 0 : -8 }]} />
               ))}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>{t.name}</Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 1 }}>{t.tagline}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>{t(entry.nameKey)}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 1 }}>{t(entry.taglineKey)}</Text>
             </View>
             {locked ? (
               <Ionicons name="lock-closed" size={16} color={theme.colors.textTertiary} />
@@ -61,7 +63,7 @@ export function ThemePicker() {
       <PaywallModal
         visible={showThemePaywall}
         productId="all_themes"
-        headline="Unlock every theme"
+        headline={t('themes.paywallHeadline')}
         onClose={() => setShowThemePaywall(false)}
       />
     </View>

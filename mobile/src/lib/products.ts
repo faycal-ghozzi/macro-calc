@@ -8,8 +8,8 @@ export type ProductId =
 
 export interface Product {
   id: ProductId
-  name: string
-  description: string
+  nameKey: string
+  descriptionKey: string
   monthlyPrice: number
   annualPrice: number
 }
@@ -17,43 +17,43 @@ export interface Product {
 export const PRODUCTS: Record<ProductId, Product> = {
   remove_ads: {
     id: 'remove_ads',
-    name: 'Remove Ads',
-    description: 'All ads removed',
+    nameKey: 'products.removeAdsName',
+    descriptionKey: 'products.removeAdsDescription',
     monthlyPrice: 0.99,
     annualPrice: 6.99,
   },
   unlimited_meals_favorites: {
     id: 'unlimited_meals_favorites',
-    name: 'Unlimited Meals & Favorites',
-    description: 'No cap on saved meals or favorites',
+    nameKey: 'products.unlimitedMealsFavoritesName',
+    descriptionKey: 'products.unlimitedMealsFavoritesDescription',
     monthlyPrice: 1.49,
     annualPrice: 9.99,
   },
   qr_sharing_unlimited: {
     id: 'qr_sharing_unlimited',
-    name: 'Unlimited QR Sharing',
-    description: 'Unlimited QR send/receive, bulk multi-recipient sharing',
+    nameKey: 'products.qrSharingName',
+    descriptionKey: 'products.qrSharingDescription',
     monthlyPrice: 1.99,
     annualPrice: 12.99,
   },
   advanced_reports: {
     id: 'advanced_reports',
-    name: 'Advanced Reports',
-    description: 'Monthly/trend progress views, CSV/PDF export',
+    nameKey: 'products.advancedReportsName',
+    descriptionKey: 'products.advancedReportsDescription',
     monthlyPrice: 1.49,
     annualPrice: 9.99,
   },
   all_themes: {
     id: 'all_themes',
-    name: 'All Themes',
-    description: 'Daylight, Terra, and Voltage themes',
+    nameKey: 'products.allThemesName',
+    descriptionKey: 'products.allThemesDescription',
     monthlyPrice: 0.99,
     annualPrice: 6.99,
   },
   pro_bundle: {
     id: 'pro_bundle',
-    name: 'MacroTrack Pro',
-    description: 'Everything unlocked',
+    nameKey: 'products.proBundleName',
+    descriptionKey: 'products.proBundleDescription',
     monthlyPrice: 4.99,
     annualPrice: 34.99,
   },

@@ -40,7 +40,7 @@ export function WeightLineChart({ data, height = 160 }: { data: Point[]; height?
   useEffect(() => {
     progress.value = 0
     progress.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) })
-  }, [polylinePoints])
+  }, [polylinePoints, progress])
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDasharray: [totalLength, totalLength] as unknown as string,

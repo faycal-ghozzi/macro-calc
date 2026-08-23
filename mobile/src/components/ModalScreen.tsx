@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Modal } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTheme } from '../theme/ThemeProvider'
+import { mirrorChevron } from '../lib/rtl'
 
 interface ModalScreenProps {
   visible: boolean
@@ -21,7 +22,7 @@ export function ModalScreen({ visible, title, onClose, leadingIcon = 'close', tr
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
           <View style={[styles.header, { borderBottomColor: theme.colors.cardBorder }]}>
             <Pressable onPress={onClose} style={[styles.iconBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
-              <Ionicons name={leadingIcon} size={19} color={theme.colors.textSecondary} />
+              <Ionicons name={mirrorChevron(leadingIcon)} size={19} color={theme.colors.textSecondary} />
             </Pressable>
             <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{title}</Text>
             <View style={styles.iconBtn}>{trailing}</View>

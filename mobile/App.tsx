@@ -1,5 +1,7 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { useSyncRtlOnLaunch } from './src/i18n'
+import { useSyncNotificationsOnLaunch } from './src/lib/notifications'
 import { AuthProvider } from './src/contexts/AuthContext'
 import { ThemeProvider } from './src/theme/ThemeProvider'
 import { ErrorBoundary } from './src/components/ErrorBoundary'
@@ -12,9 +14,13 @@ import { WeightLogProvider } from './src/hooks/useWeightLog'
 import { ReportsProvider } from './src/hooks/useReports'
 import { FoodLogProvider } from './src/hooks/useFoodLog'
 import { ExerciseLogProvider } from './src/hooks/useExerciseLog'
+import { WaterLogProvider } from './src/hooks/useWaterLog'
 import { TourProvider } from './src/contexts/TourContext'
 
 export default function App() {
+  useSyncRtlOnLaunch()
+  useSyncNotificationsOnLaunch()
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -29,9 +35,11 @@ export default function App() {
                         <ReportsProvider>
                           <FoodLogProvider>
                             <ExerciseLogProvider>
-                              <TourProvider>
-                                <RootNavigator />
-                              </TourProvider>
+                              <WaterLogProvider>
+                                <TourProvider>
+                                  <RootNavigator />
+                                </TourProvider>
+                              </WaterLogProvider>
                             </ExerciseLogProvider>
                           </FoodLogProvider>
                         </ReportsProvider>

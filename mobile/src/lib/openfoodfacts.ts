@@ -1,4 +1,6 @@
+import i18next from '../i18n'
 import { FoodItem } from '../types'
+import { roundTo2 } from './macroCalc'
 
 function parseNutriments(n: Record<string, number>): Omit<FoodItem, 'name' | 'barcode' | 'source' | 'category'> {
   const kcal =
@@ -7,13 +9,16 @@ function parseNutriments(n: Record<string, number>): Omit<FoodItem, 'name' | 'ba
     (n['energy_100g'] ? n['energy_100g'] / 4.184 : undefined) ??
     0
 
+  // OpenFoodFacts nutriment values often arrive as long floats
+  // (e.g. 3.9999999999999996) - round at the boundary so nothing
+  // downstream ever has to deal with that.
   return {
     calories_100g: Math.round(kcal),
-    protein_100g: n['proteins_100g'] ?? 0,
-    carbs_100g: n['carbohydrates_100g'] ?? 0,
-    fat_100g: n['fat_100g'] ?? 0,
-    fiber_100g: n['fiber_100g'],
-    sugar_100g: n['sugars_100g'],
+    protein_100g: roundTo2(n['proteins_100g'] ?? 0),
+    carbs_100g: roundTo2(n['carbohydrates_100g'] ?? 0),
+    fat_100g: roundTo2(n['fat_100g'] ?? 0),
+    fiber_100g: n['fiber_100g'] != null ? roundTo2(n['fiber_100g']) : undefined,
+    sugar_100g: n['sugars_100g'] != null ? roundTo2(n['sugars_100g']) : undefined,
   }
 }
 
@@ -30,7 +35,7 @@ export async function fetchProductByBarcode(barcode: string): Promise<FoodItem |
     const n: Record<string, number> = p.nutriments || {}
 
     return {
-      name: p.product_name || p.generic_name || 'Unknown Product',
+      name: p.product_name || p.generic_name || i18next.t('common.unknownProduct'),
       barcode,
       ...parseNutriments(n),
       source: 'openfoodfacts',

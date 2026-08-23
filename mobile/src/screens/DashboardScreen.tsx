@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useNavigation } from '@react-navigation/native'
@@ -12,45 +13,77 @@ import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { ProgressRing, RingLabel } from '../components/ProgressRing'
 import { MacroBar } from '../components/MacroBar'
+import { LogWeightModal } from '../components/LogWeightModal'
 import { useTheme } from '../theme/ThemeProvider'
 import { useFoodLog } from '../hooks/useFoodLog'
 import { useExerciseLog } from '../hooks/useExerciseLog'
+import { useWaterLog } from '../hooks/useWaterLog'
 import { useProfile } from '../hooks/useProfile'
+import { useUnitsStore } from '../store/useUnitsStore'
+import { useTour, TourTarget } from '../contexts/TourContext'
+import { useTourProgressStore } from '../store/useTourProgressStore'
 import { calculateMacroTargets } from '../lib/macroCalc'
+import { mirrorChevron, rtlFlipStyle } from '../lib/rtl'
+import { waterUnitLabel, mlToDisplayValue, displayValueToMl, massUnitLabel, gToDisplayValue } from '../lib/units'
+import { MEAL_TYPES, MEAL_ICONS, MEAL_TYPE_LABEL_KEYS } from '../lib/mealTypes'
 import type { TabParamList } from '../navigation/TabNavigator'
-import type { MealType } from '../types'
+
+const WATER_QUICK_ADD: Record<'metric' | 'imperial', number[]> = {
+  metric: [250, 500],
+  imperial: [8, 16],
+}
+
+const DEFAULT_WATER_GOAL_ML = 2000
 
 function formatDate(date: Date) {
   return date.toISOString().split('T')[0]
 }
 
-function displayDate(date: Date) {
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-  if (formatDate(date) === formatDate(today)) return 'Today'
-  if (formatDate(date) === formatDate(yesterday)) return 'Yesterday'
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
-const MEAL_ICONS: Record<MealType, string> = {
-  breakfast: 'sunny-outline',
-  lunch: 'partly-sunny-outline',
-  dinner: 'moon-outline',
-  snack: 'cafe-outline',
-}
-
 export default function DashboardScreen() {
   const theme = useTheme()
+  const { t, i18n } = useTranslation()
   const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>()
   const [date, setDate] = useState(new Date())
   const dateStr = formatDate(date)
+
+  function displayDate(d: Date) {
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    if (formatDate(d) === formatDate(today)) return t('common.today')
+    if (formatDate(d) === formatDate(yesterday)) return t('dashboard.yesterday')
+    return d.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' })
+  }
   const { totals, byMeal, loading } = useFoodLog(dateStr)
   const { totalBurned } = useExerciseLog(dateStr)
+  const { totalMl: waterMl, addWaterLog, deleteWaterLog, logs: waterLogs } = useWaterLog(dateStr)
   const { profile } = useProfile()
+  const { system } = useUnitsStore()
   const targets = profile ? calculateMacroTargets(profile) : null
   const isToday = formatDate(date) === formatDate(new Date())
+  const { showTip } = useTour()
+  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
+  const [showWeightModal, setShowWeightModal] = useState(false)
+  const [addingWater, setAddingWater] = useState(false)
+
+  const weightTipAttempted = useRef(false)
+  useEffect(() => {
+    if (seenFeatureTips.tip_weight_log || weightTipAttempted.current) return
+    weightTipAttempted.current = true
+    showTip('tip_weight_log', { title: t('tour.tipWeightLogTitle'), body: t('tour.tipWeightLogBody') })
+  }, [seenFeatureTips, showTip, t])
+
+  const settingsTipAttempted = useRef(false)
+  useEffect(() => {
+    if (seenFeatureTips.tip_settings || settingsTipAttempted.current) return
+    settingsTipAttempted.current = true
+    showTip('tip_settings', { title: t('tour.tipSettingsTitle'), body: t('tour.tipSettingsBody') })
+  }, [seenFeatureTips, showTip, t])
+
+  function handleSettingsPress() {
+    Haptics.selectionAsync()
+    navigation.navigate('Profile', { screen: 'Settings' })
+  }
 
   function changeDate(delta: number) {
     const next = new Date(date)
@@ -60,24 +93,62 @@ export default function DashboardScreen() {
     setDate(next)
   }
 
+  async function handleQuickAddWater(displayAmount: number) {
+    Haptics.selectionAsync()
+    setAddingWater(true)
+    await addWaterLog(displayValueToMl(displayAmount, system))
+    setAddingWater(false)
+  }
+
+  async function handleUndoWater() {
+    if (waterLogs.length === 0) return
+    Haptics.selectionAsync()
+    await deleteWaterLog(waterLogs[waterLogs.length - 1].id)
+  }
+
   const netCalories = totals.calories - totalBurned
   const caloriesLeft = targets ? targets.calories - netCalories : null
   const caloriesProgress = targets ? netCalories / targets.calories : 0
+  const waterUnit = waterUnitLabel(system)
+  const waterGoalMl = profile?.water_goal_ml ?? DEFAULT_WATER_GOAL_ML
+  const massUnit = massUnitLabel(system)
+  const massDecimals = system === 'imperial' ? 1 : 0
+  const waterDisplay = mlToDisplayValue(waterMl, system)
+  const waterGoalDisplay = mlToDisplayValue(waterGoalMl, system)
+  const quickAddAmounts = WATER_QUICK_ADD[system]
 
   return (
     <Screen contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8 }}>
       <View style={styles.topRow}>
-        <Text style={[styles.appTitle, { color: theme.colors.textPrimary }]}>MacroTrack</Text>
-        <Pressable onPress={() => navigation.navigate('Profile')}>
-          <Text style={{ color: theme.colors.accent, fontSize: 13, fontWeight: '600' }}>
-            {profile?.name || 'Set up profile'}
-          </Text>
-        </Pressable>
+        <TourTarget id="tip_settings">
+          <Pressable
+            onPress={handleSettingsPress}
+            style={[styles.iconBtn, { backgroundColor: theme.colors.backgroundElevated }]}
+          >
+            <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
+          </Pressable>
+        </TourTarget>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TourTarget id="tip_weight_log">
+            <Pressable
+              onPress={() => { Haptics.selectionAsync(); setShowWeightModal(true) }}
+              style={[styles.logWeightBtn, { backgroundColor: theme.colors.backgroundElevated }]}
+            >
+              <Ionicons name="fitness-outline" size={13} color={theme.colors.textSecondary} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>{t('dashboard.logWeight')}</Text>
+            </Pressable>
+          </TourTarget>
+          <Pressable onPress={() => navigation.navigate('Profile')}>
+            <Text style={{ color: theme.colors.accent, fontSize: 13, fontWeight: '600' }}>
+              {profile?.name || t('dashboard.setUpProfile')}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.dateNav}>
         <Pressable onPress={() => changeDate(-1)} style={[styles.dateBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
-          <Ionicons name="chevron-back" size={18} color={theme.colors.textSecondary} />
+          <Ionicons name={mirrorChevron('chevron-back')} size={18} color={theme.colors.textSecondary} />
         </Pressable>
         <Text style={[styles.dateLabel, { color: theme.colors.textPrimary }]}>{displayDate(date)}</Text>
         <Pressable
@@ -85,7 +156,7 @@ export default function DashboardScreen() {
           disabled={isToday}
           style={[styles.dateBtn, { backgroundColor: theme.colors.backgroundElevated, opacity: isToday ? 0.3 : 1 }]}
         >
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+          <Ionicons name={mirrorChevron('chevron-forward')} size={18} color={theme.colors.textSecondary} />
         </Pressable>
       </View>
 
@@ -106,17 +177,17 @@ export default function DashboardScreen() {
           }}
         >
           <ProgressRing size={168} progress={caloriesProgress} color={theme.colors.calories} thickness={14}>
-            <RingLabel value={Math.round(netCalories).toString()} label="net kcal" />
+            <RingLabel value={Math.round(netCalories).toString()} label={t('dashboard.netKcal')} />
           </ProgressRing>
 
           <View style={styles.heroStats}>
             <View style={styles.heroStatRow}>
-              <Text style={[styles.heroStatLabel, { color: theme.colors.textTertiary }]}>Eaten</Text>
+              <Text style={[styles.heroStatLabel, { color: theme.colors.textTertiary }]}>{t('dashboard.eaten')}</Text>
               <Text style={[styles.heroStatValue, { color: theme.colors.textPrimary }]}>{Math.round(totals.calories)}</Text>
             </View>
             {totalBurned > 0 && (
               <View style={styles.heroStatRow}>
-                <Text style={[styles.heroStatLabel, { color: theme.colors.textTertiary }]}>Burned</Text>
+                <Text style={[styles.heroStatLabel, { color: theme.colors.textTertiary }]}>{t('dashboard.burned')}</Text>
                 <Text style={[styles.heroStatValue, { color: theme.colors.calories }]}>−{Math.round(totalBurned)}</Text>
               </View>
             )}
@@ -128,11 +199,13 @@ export default function DashboardScreen() {
                   color={caloriesLeft! >= 0 ? theme.colors.accent : theme.colors.danger}
                 />
                 <Text style={{ fontSize: 11, fontWeight: '600', color: caloriesLeft! >= 0 ? theme.colors.accent : theme.colors.danger }}>
-                  {caloriesLeft! >= 0 ? `${Math.round(caloriesLeft!)} left` : `${Math.abs(Math.round(caloriesLeft!))} over`}
+                  {caloriesLeft! >= 0
+                    ? t('dashboard.caloriesLeft', { count: Math.round(caloriesLeft!) })
+                    : t('dashboard.caloriesOver', { count: Math.abs(Math.round(caloriesLeft!)) })}
                 </Text>
               </View>
             ) : (
-              <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>No target set</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{t('dashboard.noTargetSet')}</Text>
             )}
           </View>
         </Card>
@@ -144,44 +217,69 @@ export default function DashboardScreen() {
             <View style={styles.ringsRow}>
               <View style={styles.miniRing}>
                 <ProgressRing size={74} progress={totals.protein_g / targets.protein_g} color={theme.colors.protein} thickness={7}>
-                  <Text style={[styles.miniRingValue, { color: theme.colors.textPrimary }]}>{Math.round(totals.protein_g)}</Text>
+                  <Text style={[styles.miniRingValue, { color: theme.colors.textPrimary }]}>{gToDisplayValue(totals.protein_g, system).toFixed(massDecimals)}</Text>
                 </ProgressRing>
-                <Text style={[styles.miniRingLabel, { color: theme.colors.textSecondary }]}>Protein</Text>
+                <Text style={[styles.miniRingLabel, { color: theme.colors.textSecondary }]}>{t('macros.protein')}</Text>
               </View>
               <View style={styles.miniRing}>
                 <ProgressRing size={74} progress={totals.carbs_g / targets.carbs_g} color={theme.colors.carbs} thickness={7}>
-                  <Text style={[styles.miniRingValue, { color: theme.colors.textPrimary }]}>{Math.round(totals.carbs_g)}</Text>
+                  <Text style={[styles.miniRingValue, { color: theme.colors.textPrimary }]}>{gToDisplayValue(totals.carbs_g, system).toFixed(massDecimals)}</Text>
                 </ProgressRing>
-                <Text style={[styles.miniRingLabel, { color: theme.colors.textSecondary }]}>Carbs</Text>
+                <Text style={[styles.miniRingLabel, { color: theme.colors.textSecondary }]}>{t('macros.carbs')}</Text>
               </View>
               <View style={styles.miniRing}>
                 <ProgressRing size={74} progress={totals.fat_g / targets.fat_g} color={theme.colors.fat} thickness={7}>
-                  <Text style={[styles.miniRingValue, { color: theme.colors.textPrimary }]}>{Math.round(totals.fat_g)}</Text>
+                  <Text style={[styles.miniRingValue, { color: theme.colors.textPrimary }]}>{gToDisplayValue(totals.fat_g, system).toFixed(massDecimals)}</Text>
                 </ProgressRing>
-                <Text style={[styles.miniRingLabel, { color: theme.colors.textSecondary }]}>Fat</Text>
+                <Text style={[styles.miniRingLabel, { color: theme.colors.textSecondary }]}>{t('macros.fat')}</Text>
               </View>
             </View>
           </Card>
 
           <Card style={{ marginTop: 12, gap: 14 }}>
-            <MacroBar label="Protein" current={totals.protein_g} target={targets.protein_g} color={theme.colors.protein} />
-            <MacroBar label="Carbs" current={totals.carbs_g} target={targets.carbs_g} color={theme.colors.carbs} />
-            <MacroBar label="Fat" current={totals.fat_g} target={targets.fat_g} color={theme.colors.fat} />
+            <MacroBar label={t('macros.protein')} current={gToDisplayValue(totals.protein_g, system)} target={gToDisplayValue(targets.protein_g, system)} color={theme.colors.protein} unit={massUnit} decimals={massDecimals} />
+            <MacroBar label={t('macros.carbs')} current={gToDisplayValue(totals.carbs_g, system)} target={gToDisplayValue(targets.carbs_g, system)} color={theme.colors.carbs} unit={massUnit} decimals={massDecimals} />
+            <MacroBar label={t('macros.fat')} current={gToDisplayValue(totals.fat_g, system)} target={gToDisplayValue(targets.fat_g, system)} color={theme.colors.fat} unit={massUnit} decimals={massDecimals} />
           </Card>
         </Animated.View>
       ) : (
         <Pressable onPress={() => navigation.navigate('Profile')}>
           <Card style={{ marginTop: 12, backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent + '40' }}>
             <Text style={{ color: theme.colors.accent, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
-              Complete your profile to see macro targets →
+              {t('dashboard.completeProfile')}
             </Text>
           </Card>
         </Pressable>
       )}
 
+      <Animated.View entering={FadeInDown.duration(400).delay(120)}>
+        <Card style={{ marginTop: 12, gap: 12 }}>
+          <MacroBar label={t('dashboard.water')} current={waterDisplay} target={waterGoalDisplay} color={theme.colors.water} unit={` ${waterUnit}`} />
+          <View style={styles.waterActions}>
+            {quickAddAmounts.map((amount) => (
+              <Pressable
+                key={amount}
+                onPress={() => handleQuickAddWater(amount)}
+                disabled={addingWater}
+                style={[styles.waterPill, { backgroundColor: theme.colors.water + '1A' }]}
+              >
+                <Ionicons name="add" size={12} color={theme.colors.water} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.water }}>{amount} {waterUnit}</Text>
+              </Pressable>
+            ))}
+            {addingWater && <ActivityIndicator size="small" color={theme.colors.water} />}
+            {waterLogs.length > 0 && !addingWater && (
+              <Pressable onPress={handleUndoWater} style={styles.waterUndoBtn}>
+                <Ionicons name="arrow-undo-outline" size={14} color={theme.colors.textTertiary} style={rtlFlipStyle()} />
+              </Pressable>
+            )}
+          </View>
+        </Card>
+      </Animated.View>
+
       {totals.calories === 0 && (
         <View style={{ marginTop: 12 }}>
-          <EmptyState icon="restaurant-outline" title="Nothing logged yet" subtitle="Tap a meal below to add your first entry" />
+          <EmptyState icon="restaurant-outline" title={t('dashboard.emptyTitle')} subtitle={t('dashboard.emptySubtitle')} />
         </View>
       )}
 
@@ -201,16 +299,16 @@ export default function DashboardScreen() {
                   </View>
                   <View>
                     <Text style={[styles.mealName, { color: theme.colors.textPrimary }]}>
-                      {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                      {t(MEAL_TYPE_LABEL_KEYS[meal])}
                     </Text>
                     <Text style={[styles.mealCount, { color: theme.colors.textTertiary }]}>
-                      {items.length} item{items.length !== 1 ? 's' : ''}
+                      {t('dashboard.itemCount', { count: items.length })}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.mealRight}>
-                  <Text style={[styles.mealCals, { color: theme.colors.accent }]}>{Math.round(mealCals)} kcal</Text>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+                  <Text style={[styles.mealCals, { color: theme.colors.accent }]}>{Math.round(mealCals)} {t('common.kcal')}</Text>
+                  <Ionicons name={mirrorChevron('chevron-forward')} size={16} color={theme.colors.textTertiary} />
                 </View>
               </Card>
             </Animated.View>
@@ -225,15 +323,17 @@ export default function DashboardScreen() {
         style={[styles.addButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4 }]}
       >
         <Ionicons name="add" size={20} color={theme.colors.onAccent} />
-        <Text style={[styles.addButtonText, { color: theme.colors.onAccent }]}>Add Food</Text>
+        <Text style={[styles.addButtonText, { color: theme.colors.onAccent }]}>{t('dashboard.addFood')}</Text>
       </AnimatedPressable>
+
+      <LogWeightModal visible={showWeightModal} onClose={() => setShowWeightModal(false)} />
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  appTitle: { fontSize: 20, fontWeight: '700' },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   dateNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18, marginBottom: 16 },
   dateBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   dateLabel: { fontSize: 15, fontWeight: '700', minWidth: 90, textAlign: 'center' },
@@ -256,4 +356,8 @@ const styles = StyleSheet.create({
   mealCals: { fontSize: 13, fontWeight: '700' },
   addButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, marginTop: 18 },
   addButtonText: { fontSize: 15, fontWeight: '700' },
+  logWeightBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  waterActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  waterPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  waterUndoBtn: { padding: 4, marginStart: 'auto' },
 })

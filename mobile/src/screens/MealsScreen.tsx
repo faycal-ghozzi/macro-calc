@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
@@ -20,7 +21,9 @@ import { useEntitlements } from '../hooks/useEntitlements'
 import { useTour, TourTarget } from '../contexts/TourContext'
 import { useTourProgressStore } from '../store/useTourProgressStore'
 import type { ProductId } from '../lib/products'
-import { calcMacrosFromAmount, calcMealTotals } from '../lib/macroCalc'
+import { calcMacrosFromAmount, calcMealTotals, roundTo2 } from '../lib/macroCalc'
+import { useUnitsStore } from '../store/useUnitsStore'
+import { formatMass } from '../lib/units'
 import { encodeMealToQR, decodeMealFromQR, mealQRToIngredients, MealQRData } from '../lib/mealQR'
 import type { FoodItem, Meal, MealIngredient } from '../types'
 import type { CodeFormat } from 'react-native-camera-kit'
@@ -34,6 +37,8 @@ const QR_TYPES: CodeFormat[] = ['qr']
 
 export default function MealsScreen() {
   const theme = useTheme()
+  const { t } = useTranslation()
+  const { system } = useUnitsStore()
   const { meals, loading, fetchError, createMeal, updateMeal, deleteMeal, touchMealUsed, refetch } = useMeals()
   const todayStr = new Date().toISOString().split('T')[0]
   const { addFoodLog } = useFoodLog(todayStr)
@@ -46,8 +51,8 @@ export default function MealsScreen() {
   useEffect(() => {
     if (seenFeatureTips.tip_meal_scan || mealScanTipAttempted.current) return
     mealScanTipAttempted.current = true
-    showTip('tip_meal_scan', { title: 'Copy a meal', body: "This scan is for copying someone else's saved meal, different from the daily-log scan on the Log tab." })
-  }, [seenFeatureTips, showTip])
+    showTip('tip_meal_scan', { title: t('tour.tipMealScanTitle'), body: t('tour.tipMealScanBody') })
+  }, [seenFeatureTips, showTip, t])
 
   const [creatingMeal, setCreatingMeal] = useState(false)
   const [mealName, setMealName] = useState('')
@@ -58,9 +63,11 @@ export default function MealsScreen() {
   const [editIngredients, setEditIngredients] = useState<BuildingIngredient[]>([])
   const [editSaving, setEditSaving] = useState(false)
 
+  const [mealQuery, setMealQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [searchMode, setSearchMode] = useState<SearchMode>('create')
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
+  const [editingIngredient, setEditingIngredient] = useState<{ index: number; mode: SearchMode } | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null)
@@ -97,14 +104,48 @@ export default function MealsScreen() {
     setShowSearch(false)
   }
 
+  // Reconstructs a per-100g FoodItem from an already-added ingredient's
+  // absolute macros, so the existing amount-picker UI (unit switching, quick
+  // amounts, live macro preview) can be reused to edit its quantity instead
+  // of building a separate editor from scratch.
+  function ingredientToFoodItem(ing: BuildingIngredient): FoodItem {
+    const ratio = ing.amount_g / 100
+    return {
+      name: ing.food_name,
+      barcode: ing.barcode,
+      calories_100g: ratio > 0 ? Math.round(ing.calories / ratio) : 0,
+      protein_100g: ratio > 0 ? roundTo2(ing.protein_g / ratio) : 0,
+      carbs_100g: ratio > 0 ? roundTo2(ing.carbs_g / ratio) : 0,
+      fat_100g: ratio > 0 ? roundTo2(ing.fat_g / ratio) : 0,
+      fiber_100g: ing.fiber_g != null && ratio > 0 ? roundTo2(ing.fiber_g / ratio) : undefined,
+      source: 'common',
+    }
+  }
+
+  function handleEditIngredientAmount(index: number, mode: SearchMode) {
+    const ing = (mode === 'edit' ? editIngredients : ingredients)[index]
+    if (!ing) return
+    Haptics.selectionAsync()
+    setSearchMode(mode)
+    setEditingIngredient({ index, mode })
+    setSelectedFood(ingredientToFoodItem(ing))
+  }
+
   function handleAmountConfirm(amount: number) {
     if (!selectedFood) return
     const macros = calcMacrosFromAmount(selectedFood, amount)
     const newIng: BuildingIngredient = {
       food_name: selectedFood.name, barcode: selectedFood.barcode, amount_g: amount, ...macros,
     }
-    if (searchMode === 'edit') setEditIngredients((prev) => [...prev, newIng])
-    else setIngredients((prev) => [...prev, newIng])
+    if (editingIngredient) {
+      const setList = editingIngredient.mode === 'edit' ? setEditIngredients : setIngredients
+      setList((prev) => prev.map((item, i) => (i === editingIngredient.index ? newIng : item)))
+      setEditingIngredient(null)
+    } else if (searchMode === 'edit') {
+      setEditIngredients((prev) => [...prev, newIng])
+    } else {
+      setIngredients((prev) => [...prev, newIng])
+    }
     setSelectedFood(null)
   }
 
@@ -117,7 +158,7 @@ export default function MealsScreen() {
     setSaving(false)
     if (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-      Alert.alert("Couldn't save meal", error.message)
+      Alert.alert(t('meals.saveErrorTitle'), error.message)
       return
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -140,16 +181,17 @@ export default function MealsScreen() {
     setAddingMealId(meal.id)
     touchMealUsed(meal.id)
     const ings = meal.ingredients
+    const totals = calcMealTotals(ings)
     await addFoodLog({
       logged_at: todayStr,
       meal_type: 'lunch',
       food_name: meal.name,
-      amount_g: ings.reduce((s, i) => s + i.amount_g, 0),
-      calories: ings.reduce((s, i) => s + i.calories, 0),
-      protein_g: ings.reduce((s, i) => s + i.protein_g, 0),
-      carbs_g: ings.reduce((s, i) => s + i.carbs_g, 0),
-      fat_g: ings.reduce((s, i) => s + i.fat_g, 0),
-      fiber_g: ings.reduce((s, i) => s + (i.fiber_g ?? 0), 0),
+      amount_g: roundTo2(ings.reduce((s, i) => s + i.amount_g, 0)),
+      calories: totals.calories,
+      protein_g: totals.protein_g,
+      carbs_g: totals.carbs_g,
+      fat_g: totals.fat_g,
+      fiber_g: roundTo2(ings.reduce((s, i) => s + (i.fiber_g ?? 0), 0)),
       sugar_g: 0,
       meal_ingredients: ings.map((i) => ({ food_name: i.food_name, amount_g: i.amount_g, calories: i.calories, protein_g: i.protein_g, carbs_g: i.carbs_g, fat_g: i.fat_g })),
     })
@@ -181,23 +223,25 @@ export default function MealsScreen() {
   }
 
   const buildingTotals = calcMealTotals(ingredients)
+  const filteredMeals = !editingMealId && mealQuery.trim()
+    ? meals.filter((m) => m.name.toLowerCase().includes(mealQuery.trim().toLowerCase()))
+    : meals
 
   return (
     <Screen contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8 }}>
       <View style={styles.topRow}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Saved Meals</Text>
         {!creatingMeal && (
           <View style={styles.headerActions}>
             <TourTarget id="tip_meal_scan">
               <Pressable onPress={() => setShowScanner(true)} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
                 <Ionicons name="scan-outline" size={14} color={theme.colors.textSecondary} />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>Scan</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>{t('meals.scan')}</Text>
               </Pressable>
             </TourTarget>
             <TourTarget id="tip_meal_new">
               <Pressable onPress={() => { Haptics.selectionAsync(); setCreatingMeal(true) }} style={[styles.headerBtn, { backgroundColor: theme.colors.accentSoft }]}>
                 <Ionicons name="add" size={14} color={theme.colors.accent} />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>New</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>{t('meals.new')}</Text>
               </Pressable>
             </TourTarget>
           </View>
@@ -207,13 +251,13 @@ export default function MealsScreen() {
       {creatingMeal && (
         <Card style={{ marginBottom: 14, gap: 14 }}>
           <View style={styles.panelHeader}>
-            <Text style={[styles.panelTitle, { color: theme.colors.textPrimary }]}>New Meal</Text>
+            <Text style={[styles.panelTitle, { color: theme.colors.textPrimary }]}>{t('meals.newMealHeader')}</Text>
             <Pressable onPress={() => { setCreatingMeal(false); setIngredients([]); setMealName('') }}>
               <Ionicons name="close" size={18} color={theme.colors.textTertiary} />
             </Pressable>
           </View>
           <TextInput
-            placeholder="Meal name (e.g. Post-workout)"
+            placeholder={t('meals.namePlaceholder')}
             placeholderTextColor={theme.colors.textTertiary}
             value={mealName}
             onChangeText={setMealName}
@@ -223,26 +267,29 @@ export default function MealsScreen() {
             <View style={{ gap: 8 }}>
               {ingredients.map((ing, i) => (
                 <View key={`${ing.food_name}-${i}`} style={[styles.ingRow, { backgroundColor: theme.colors.backgroundElevated }]}>
-                  <View>
-                    <Text style={{ fontSize: 13, color: theme.colors.textPrimary }}>{ing.food_name}</Text>
-                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{ing.amount_g}g · {ing.calories} kcal</Text>
-                  </View>
-                  <Pressable onPress={() => setIngredients((prev) => prev.filter((_, j) => j !== i))}>
+                  <Pressable style={styles.ingRowInfo} onPress={() => handleEditIngredientAmount(i, 'create')}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, color: theme.colors.textPrimary }}>{ing.food_name}</Text>
+                      <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{formatMass(ing.amount_g, system)} · {Math.round(ing.calories)} {t('common.kcal')}</Text>
+                    </View>
+                    <Ionicons name="pencil-outline" size={13} color={theme.colors.textTertiary} />
+                  </Pressable>
+                  <Pressable onPress={() => setIngredients((prev) => prev.filter((_, j) => j !== i))} style={styles.ingRowDelete}>
                     <Ionicons name="close" size={16} color={theme.colors.textTertiary} />
                   </Pressable>
                 </View>
               ))}
               <View style={styles.totalsRow}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.accent }}>{Math.round(buildingTotals.calories)} kcal</Text>
-                <Text style={{ fontSize: 12, color: theme.colors.protein }}>P {Math.round(buildingTotals.protein_g)}g</Text>
-                <Text style={{ fontSize: 12, color: theme.colors.carbs }}>C {Math.round(buildingTotals.carbs_g)}g</Text>
-                <Text style={{ fontSize: 12, color: theme.colors.fat }}>F {Math.round(buildingTotals.fat_g)}g</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.accent }}>{Math.round(buildingTotals.calories)} {t('common.kcal')}</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.protein }}>P {formatMass(buildingTotals.protein_g, system)}</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.carbs }}>C {formatMass(buildingTotals.carbs_g, system)}</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.fat }}>F {formatMass(buildingTotals.fat_g, system)}</Text>
               </View>
             </View>
           )}
           <Pressable onPress={() => openSearch('create')} style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 }]}>
             <Ionicons name="add" size={16} color={theme.colors.textSecondary} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>Add Ingredient</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>{t('meals.addIngredient')}</Text>
           </Pressable>
           <Pressable
             onPress={handleSaveMeal}
@@ -250,26 +297,43 @@ export default function MealsScreen() {
             style={[styles.primaryButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 8, opacity: saving || !mealName.trim() || ingredients.length === 0 ? 0.5 : 1 }]}
           >
             {saving ? <ActivityIndicator color={theme.colors.onAccent} /> : null}
-            <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>Save Meal</Text>
+            <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>{t('meals.saveMeal')}</Text>
           </Pressable>
         </Card>
       )}
 
       {loading && <LoadingState minHeight={200} />}
-      {!loading && fetchError && <ErrorState message="Couldn't load your meals." onRetry={refetch} />}
+      {!loading && fetchError && <ErrorState message={t('meals.loadErrorMessage')} onRetry={refetch} />}
+
+      {!loading && !fetchError && !creatingMeal && !editingMealId && meals.length > 0 && (
+        <View style={[styles.searchBox, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6, marginBottom: 10 }]}>
+          <Ionicons name="search" size={17} color={theme.colors.textTertiary} />
+          <TextInput
+            placeholder={t('meals.searchPlaceholder')}
+            placeholderTextColor={theme.colors.textTertiary}
+            value={mealQuery}
+            onChangeText={setMealQuery}
+            style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+          />
+        </View>
+      )}
 
       {!loading && !fetchError && meals.length === 0 && !creatingMeal && (
-        <EmptyState icon="book-outline" title="No saved meals yet" subtitle="Tap New to create your first meal" />
+        <EmptyState icon="book-outline" title={t('meals.emptyTitle')} subtitle={t('meals.emptySubtitle')} />
+      )}
+
+      {!loading && !fetchError && meals.length > 0 && filteredMeals.length === 0 && (
+        <EmptyState icon="search-outline" title={t('food.noResultsTitle')} />
       )}
 
       <View style={{ gap: 10 }}>
-        {meals.map((meal) => {
+        {filteredMeals.map((meal) => {
           if (editingMealId === meal.id) {
             const editTotals = calcMealTotals(editIngredients)
             return (
               <Card key={meal.id} style={{ gap: 14 }}>
                 <View style={styles.panelHeader}>
-                  <Text style={[styles.panelTitle, { color: theme.colors.textPrimary }]}>Edit Meal</Text>
+                  <Text style={[styles.panelTitle, { color: theme.colors.textPrimary }]}>{t('meals.editMealHeader')}</Text>
                   <Pressable onPress={cancelEdit}>
                     <Ionicons name="close" size={18} color={theme.colors.textTertiary} />
                   </Pressable>
@@ -283,26 +347,29 @@ export default function MealsScreen() {
                   <View style={{ gap: 8 }}>
                     {editIngredients.map((ing, i) => (
                       <View key={`${ing.food_name}-${i}`} style={[styles.ingRow, { backgroundColor: theme.colors.backgroundElevated }]}>
-                        <View>
-                          <Text style={{ fontSize: 13, color: theme.colors.textPrimary }}>{ing.food_name}</Text>
-                          <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{ing.amount_g}g · {ing.calories} kcal</Text>
-                        </View>
-                        <Pressable onPress={() => setEditIngredients((prev) => prev.filter((_, j) => j !== i))}>
+                        <Pressable style={styles.ingRowInfo} onPress={() => handleEditIngredientAmount(i, 'edit')}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, color: theme.colors.textPrimary }}>{ing.food_name}</Text>
+                            <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{formatMass(ing.amount_g, system)} · {Math.round(ing.calories)} {t('common.kcal')}</Text>
+                          </View>
+                          <Ionicons name="pencil-outline" size={13} color={theme.colors.textTertiary} />
+                        </Pressable>
+                        <Pressable onPress={() => setEditIngredients((prev) => prev.filter((_, j) => j !== i))} style={styles.ingRowDelete}>
                           <Ionicons name="close" size={16} color={theme.colors.textTertiary} />
                         </Pressable>
                       </View>
                     ))}
                     <View style={styles.totalsRow}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.accent }}>{Math.round(editTotals.calories)} kcal</Text>
-                      <Text style={{ fontSize: 12, color: theme.colors.protein }}>P {Math.round(editTotals.protein_g)}g</Text>
-                      <Text style={{ fontSize: 12, color: theme.colors.carbs }}>C {Math.round(editTotals.carbs_g)}g</Text>
-                      <Text style={{ fontSize: 12, color: theme.colors.fat }}>F {Math.round(editTotals.fat_g)}g</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.accent }}>{Math.round(editTotals.calories)} {t('common.kcal')}</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.protein }}>P {formatMass(editTotals.protein_g, system)}</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.carbs }}>C {formatMass(editTotals.carbs_g, system)}</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.fat }}>F {formatMass(editTotals.fat_g, system)}</Text>
                     </View>
                   </View>
                 )}
                 <Pressable onPress={() => openSearch('edit')} style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 }]}>
                   <Ionicons name="add" size={16} color={theme.colors.textSecondary} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>Add Ingredient</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>{t('meals.addIngredient')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleSaveEdit}
@@ -310,7 +377,7 @@ export default function MealsScreen() {
                   style={[styles.primaryButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 8, opacity: editSaving || !editName.trim() || editIngredients.length === 0 ? 0.5 : 1 }]}
                 >
                   {editSaving ? <ActivityIndicator color={theme.colors.onAccent} /> : <Ionicons name="checkmark" size={16} color={theme.colors.onAccent} />}
-                  <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>Save Changes</Text>
+                  <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>{t('meals.saveChanges')}</Text>
                 </Pressable>
               </Card>
             )
@@ -326,10 +393,10 @@ export default function MealsScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.mealTitle, { color: theme.colors.textPrimary }]}>{meal.name}</Text>
                     <View style={styles.totalsRow}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.accent }}>{Math.round(totals.calories)} kcal</Text>
-                      <Text style={{ fontSize: 11, color: theme.colors.protein }}>P {Math.round(totals.protein_g)}g</Text>
-                      <Text style={{ fontSize: 11, color: theme.colors.carbs }}>C {Math.round(totals.carbs_g)}g</Text>
-                      <Text style={{ fontSize: 11, color: theme.colors.fat }}>F {Math.round(totals.fat_g)}g</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.accent }}>{Math.round(totals.calories)} {t('common.kcal')}</Text>
+                      <Text style={{ fontSize: 11, color: theme.colors.protein }}>P {formatMass(totals.protein_g, system)}</Text>
+                      <Text style={{ fontSize: 11, color: theme.colors.carbs }}>C {formatMass(totals.carbs_g, system)}</Text>
+                      <Text style={{ fontSize: 11, color: theme.colors.fat }}>F {formatMass(totals.fat_g, system)}</Text>
                     </View>
                   </View>
                 </View>
@@ -344,7 +411,7 @@ export default function MealsScreen() {
                     ) : (
                       <Ionicons name="add" size={13} color={theme.colors.accent} />
                     )}
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>Today</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>{t('meals.today')}</Text>
                   </Pressable>
                   <Pressable onPress={() => startEdit(meal)} style={styles.iconAction}>
                     <Ionicons name="pencil" size={16} color={theme.colors.textTertiary} />
@@ -365,7 +432,7 @@ export default function MealsScreen() {
                   {meal.ingredients.map((ing) => (
                     <View key={ing.id} style={[styles.itemRow, { borderTopColor: theme.colors.cardBorder }]}>
                       <Text style={{ fontSize: 13, color: theme.colors.textPrimary }}>{ing.food_name}</Text>
-                      <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>{ing.amount_g}g · {Math.round(ing.calories)} kcal</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>{formatMass(ing.amount_g, system)} · {Math.round(ing.calories)} {t('common.kcal')}</Text>
                     </View>
                   ))}
                 </View>
@@ -385,33 +452,43 @@ export default function MealsScreen() {
         visible={!!selectedFood}
         food={selectedFood}
         onConfirm={handleAmountConfirm}
-        onClose={() => { setSelectedFood(null); setShowSearch(true) }}
+        onClose={() => {
+          setSelectedFood(null)
+          if (!editingIngredient) setShowSearch(true)
+          setEditingIngredient(null)
+        }}
+        initialAmountG={
+          editingIngredient
+            ? (editingIngredient.mode === 'edit' ? editIngredients : ingredients)[editingIngredient.index]?.amount_g
+            : undefined
+        }
+        confirmLabelKey={editingIngredient ? 'addAmount.updateAmount' : 'addAmount.addToLog'}
       />
 
       {qrMeal && (
         <ShareQRModal
           visible={!!qrMeal}
-          title="Share Meal"
+          title={t('meals.shareTitle')}
           qrValue={encodeMealToQR(qrMeal)}
           heading={qrMeal.name}
           meta={(() => {
-            const t = calcMealTotals(qrMeal.ingredients ?? [])
+            const qrTotals = calcMealTotals(qrMeal.ingredients ?? [])
             return [
-              { label: `${Math.round(t.calories)} kcal`, color: theme.colors.accent },
-              { label: `P ${Math.round(t.protein_g)}g`, color: theme.colors.protein },
-              { label: `C ${Math.round(t.carbs_g)}g`, color: theme.colors.carbs },
-              { label: `F ${Math.round(t.fat_g)}g`, color: theme.colors.fat },
+              { label: `${Math.round(qrTotals.calories)} ${t('common.kcal')}`, color: theme.colors.accent },
+              { label: `P ${formatMass(qrTotals.protein_g, system)}`, color: theme.colors.protein },
+              { label: `C ${formatMass(qrTotals.carbs_g, system)}`, color: theme.colors.carbs },
+              { label: `F ${formatMass(qrTotals.fat_g, system)}`, color: theme.colors.fat },
             ]
           })()}
-          hint="Ask your friend to scan this with MacroTrack"
+          hint={t('meals.shareHint')}
           onClose={() => setQRMeal(null)}
         />
       )}
 
       <CameraScannerModal
         visible={showScanner}
-        title="Scan Meal QR"
-        hint="Point camera at a MacroTrack meal QR code"
+        title={t('meals.scanTitle')}
+        hint={t('meals.scanHint')}
         types={QR_TYPES}
         shape="square"
         onScan={handleQRScan}
@@ -423,12 +500,12 @@ export default function MealsScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setImportingMeal(null)} />
           <SafeAreaView edges={['bottom']} style={[styles.importSheet, { backgroundColor: theme.colors.card, borderTopLeftRadius: theme.style.cardRadius + 6, borderTopRightRadius: theme.style.cardRadius + 6 }]}>
             <View style={styles.panelHeader}>
-              <Text style={[styles.panelTitle, { color: theme.colors.textPrimary }]}>Import Meal</Text>
+              <Text style={[styles.panelTitle, { color: theme.colors.textPrimary }]}>{t('meals.importTitle')}</Text>
               <Pressable onPress={() => setImportingMeal(null)}>
                 <Ionicons name="close" size={18} color={theme.colors.textTertiary} />
               </Pressable>
             </View>
-            <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginBottom: 6 }}>Meal name (rename or keep as is)</Text>
+            <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginBottom: 6 }}>{t('meals.importNamePlaceholder')}</Text>
             <TextInput
               value={importName}
               onChangeText={setImportName}
@@ -439,9 +516,9 @@ export default function MealsScreen() {
                 <View key={`${ing.n}-${i}`} style={[styles.ingRow, { backgroundColor: theme.colors.backgroundElevated, marginBottom: 6 }]}>
                   <View>
                     <Text style={{ fontSize: 13, color: theme.colors.textPrimary }}>{ing.n}</Text>
-                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{ing.a}g</Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{formatMass(ing.a, system)}</Text>
                   </View>
-                  <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>{ing.c} kcal</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.textTertiary }}>{ing.c} {t('common.kcal')}</Text>
                 </View>
               ))}
             </ScrollView>
@@ -451,7 +528,7 @@ export default function MealsScreen() {
               style={[styles.importButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4 }]}
             >
               {importSaving ? <ActivityIndicator color={theme.colors.onAccent} /> : null}
-              <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>Save to My Meals</Text>
+              <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 14 }}>{t('meals.saveToMyMeals')}</Text>
             </Pressable>
           </SafeAreaView>
         </View>
@@ -460,7 +537,7 @@ export default function MealsScreen() {
       <PaywallModal
         visible={!!paywallProduct}
         productId={paywallProduct}
-        headline={paywallProduct === 'unlimited_meals_favorites' ? 'Save unlimited meals' : 'Share unlimited meals & logs'}
+        headline={paywallProduct === 'unlimited_meals_favorites' ? t('meals.paywallSaveHeadline') : t('meals.paywallShareHeadline')}
         onClose={() => setPaywallProduct(null)}
       />
     </Screen>
@@ -468,14 +545,17 @@ export default function MealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  title: { fontSize: 19, fontWeight: '700' },
+  topRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 14 },
   headerActions: { flexDirection: 'row', gap: 8 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12 },
   panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   panelTitle: { fontSize: 15, fontWeight: '700' },
   input: { paddingHorizontal: 14, paddingVertical: 12, fontSize: 14 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 11 },
+  searchInput: { flex: 1, fontSize: 14 },
   ingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
+  ingRowInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ingRowDelete: { paddingLeft: 10 },
   totalsRow: { flexDirection: 'row', gap: 12, paddingTop: 2 },
   secondaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
   primaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 },

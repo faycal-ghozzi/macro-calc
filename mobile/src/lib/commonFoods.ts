@@ -110,3 +110,23 @@ export function searchCommonFoods(query: string): FoodItem[] {
 export const FOOD_CATEGORIES = [
   ...new Set(COMMON_FOODS.map((f) => f.category).filter(Boolean)),
 ] as string[]
+
+// Category values themselves stay the raw English strings above (used for
+// filtering/matching against food.category) - this only maps them to a
+// translation key for display, same pattern as lib/mealTypes.ts.
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  Meat: 'common.foodCategories.meat',
+  Fish: 'common.foodCategories.fish',
+  'Eggs & Dairy': 'common.foodCategories.eggsDairy',
+  Grains: 'common.foodCategories.grains',
+  Legumes: 'common.foodCategories.legumes',
+  Fruit: 'common.foodCategories.fruit',
+  Vegetable: 'common.foodCategories.vegetable',
+  'Nuts & Seeds': 'common.foodCategories.nutsSeeds',
+  Oils: 'common.foodCategories.oils',
+  Supplements: 'common.foodCategories.supplements',
+}
+
+export function categoryLabelKey(category: string): string {
+  return CATEGORY_LABEL_KEYS[category] ?? category
+}

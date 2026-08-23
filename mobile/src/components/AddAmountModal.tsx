@@ -1,34 +1,45 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { ModalScreen } from './ModalScreen'
 import { useTheme } from '../theme/ThemeProvider'
 import { useFavorites } from '../hooks/useFavorites'
-import { calcMacrosFromAmount, convertToGrams } from '../lib/macroCalc'
+import { calcMacrosFromAmount, convertToGrams, roundTo2 } from '../lib/macroCalc'
 import type { FoodItem, MeasurementUnit } from '../types'
+import { mirrorChevron } from '../lib/rtl'
+import { useUnitsStore } from '../store/useUnitsStore'
+import { formatMass, gToDisplayValue } from '../lib/units'
 
 interface AddAmountModalProps {
   visible: boolean
   food: FoodItem | null
   onConfirm: (amount_g: number) => void
   onClose: () => void
+  // When set, the modal opens pre-filled with this amount instead of the
+  // usual default - used to edit an already-chosen quantity rather than add
+  // a brand new one.
+  initialAmountG?: number
+  confirmLabelKey?: string
 }
 
-type UnitGroup = { label: string; units: { value: MeasurementUnit; label: string }[] }
+type UnitGroup = { labelKey: string; units: { value: MeasurementUnit; label: string }[] }
 
 function getUnitGroups(food: FoodItem): UnitGroup[] {
   const groups: UnitGroup[] = [
-    { label: 'Weight', units: [{ value: 'g', label: 'g' }] },
-    { label: 'Volume', units: [{ value: 'ml', label: 'ml' }, { value: 'cl', label: 'cl' }, { value: 'L', label: 'L' }] },
-    { label: 'Spoon', units: [{ value: 'tbsp', label: 'tbsp' }, { value: 'tsp', label: 'tsp' }] },
+    { labelKey: 'addAmount.groupWeight', units: [{ value: 'g', label: 'g' }, { value: 'oz', label: 'oz' }, { value: 'lb', label: 'lb' }] },
+    { labelKey: 'addAmount.groupVolume', units: [{ value: 'ml', label: 'ml' }, { value: 'cl', label: 'cl' }, { value: 'L', label: 'L' }] },
+    { labelKey: 'addAmount.groupSpoon', units: [{ value: 'tbsp', label: 'tbsp' }, { value: 'tsp', label: 'tsp' }] },
   ]
-  if (food.piece_weight_g) groups.push({ label: 'Count', units: [{ value: 'piece', label: 'piece' }] })
+  if (food.piece_weight_g) groups.push({ labelKey: 'addAmount.groupCount', units: [{ value: 'piece', label: 'piece' }] })
   return groups
 }
 
 const QUICK_AMOUNTS: Record<MeasurementUnit, number[]> = {
   g: [50, 100, 150, 200, 250, 300],
+  oz: [1, 2, 3, 4, 6, 8],
+  lb: [0.25, 0.5, 0.75, 1, 1.5, 2],
   ml: [50, 100, 150, 200, 250, 330],
   cl: [5, 10, 15, 20, 25, 33],
   L: [0.25, 0.33, 0.5, 0.75, 1, 1.5],
@@ -40,14 +51,34 @@ const QUICK_AMOUNTS: Record<MeasurementUnit, number[]> = {
 function defaultAmountForUnit(unit: MeasurementUnit): string {
   if (unit === 'piece') return '1'
   if (unit === 'L') return '0.5'
+  if (unit === 'oz') return '4'
+  if (unit === 'lb') return '0.5'
   return '100'
 }
 
-export function AddAmountModal({ visible, food, onConfirm, onClose }: AddAmountModalProps) {
+export function AddAmountModal({ visible, food, onConfirm, onClose, initialAmountG, confirmLabelKey = 'addAmount.addToLog' }: AddAmountModalProps) {
   const theme = useTheme()
+  const { t } = useTranslation()
   const { isFavorite, toggleFavorite } = useFavorites()
-  const [unit, setUnit] = useState<MeasurementUnit>('g')
-  const [amount, setAmount] = useState('100')
+  const { system } = useUnitsStore()
+  const defaultUnit: MeasurementUnit = system === 'imperial' ? 'oz' : 'g'
+  const [unit, setUnit] = useState<MeasurementUnit>(defaultUnit)
+  const [amount, setAmount] = useState(defaultAmountForUnit(defaultUnit))
+
+  // Resets whenever a new add/edit session starts (food is a fresh object
+  // each time) - pre-fills the existing quantity when editing, or falls
+  // back to the normal default when adding something new.
+  useEffect(() => {
+    if (!food) return
+    if (initialAmountG != null) {
+      setUnit(defaultUnit)
+      setAmount(String(roundTo2(gToDisplayValue(initialAmountG, system))))
+    } else {
+      setUnit(defaultUnit)
+      setAmount(defaultAmountForUnit(defaultUnit))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [food])
 
   if (!food) return null
 
@@ -67,19 +98,21 @@ export function AddAmountModal({ visible, food, onConfirm, onClose }: AddAmountM
     if (amountInGrams <= 0) return
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     onConfirm(amountInGrams)
-    setUnit('g')
-    setAmount('100')
+    setUnit(defaultUnit)
+    setAmount(defaultAmountForUnit(defaultUnit))
   }
 
-  const unitLabel = unit === 'piece' ? `piece${amountNum === 1 ? '' : 's'} (≈${food.piece_weight_g}g each)` : unit
+  const unitLabel = unit === 'piece'
+    ? t('addAmount.pieceLabel', { count: amountNum, amount: formatMass(food.piece_weight_g ?? 0, system) })
+    : unit
 
   return (
-    <ModalScreen visible={visible} title="Set Amount" onClose={onClose} leadingIcon="chevron-back">
+    <ModalScreen visible={visible} title={t('addAmount.title')} onClose={onClose} leadingIcon="chevron-back">
       <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }}>
         <View style={[styles.foodInfo, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.foodName, { color: theme.colors.textPrimary }]}>{food.name}</Text>
-            <Text style={[styles.foodMeta, { color: theme.colors.textTertiary }]}>per 100g: {food.calories_100g} kcal</Text>
+            <Text style={[styles.foodMeta, { color: theme.colors.textTertiary }]}>{t('addAmount.perAmountKcal', { amount: formatMass(100, system), count: food.calories_100g })}</Text>
           </View>
           <Pressable onPress={() => { Haptics.selectionAsync(); toggleFavorite(food) }}>
             <Ionicons name={fav ? 'heart' : 'heart-outline'} size={22} color={fav ? theme.colors.danger : theme.colors.textTertiary} />
@@ -87,10 +120,10 @@ export function AddAmountModal({ visible, food, onConfirm, onClose }: AddAmountM
         </View>
 
         <View style={{ gap: 10 }}>
-          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Unit</Text>
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('addAmount.unitLabel')}</Text>
           {unitGroups.map((group) => (
-            <View key={group.label} style={styles.unitGroupRow}>
-              <Text style={[styles.unitGroupLabel, { color: theme.colors.textTertiary }]}>{group.label}</Text>
+            <View key={group.labelKey} style={styles.unitGroupRow}>
+              <Text style={[styles.unitGroupLabel, { color: theme.colors.textTertiary }]}>{t(group.labelKey)}</Text>
               <View style={styles.unitButtons}>
                 {group.units.map((u) => (
                   <Pressable
@@ -109,7 +142,7 @@ export function AddAmountModal({ visible, food, onConfirm, onClose }: AddAmountM
         </View>
 
         <View style={{ gap: 10 }}>
-          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Amount</Text>
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('addAmount.amountLabel')}</Text>
           <View style={[styles.amountBox, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
             <TextInput
               value={amount}
@@ -132,7 +165,7 @@ export function AddAmountModal({ visible, food, onConfirm, onClose }: AddAmountM
               </Pressable>
             ))}
           </View>
-          {unit !== 'g' && amountInGrams > 0 ? (
+          {unit !== 'g' && system !== 'imperial' && amountInGrams > 0 ? (
             <Text style={{ fontSize: 11, color: theme.colors.textTertiary, textAlign: 'center' }}>≈ {Math.round(amountInGrams)}g</Text>
           ) : null}
         </View>
@@ -140,24 +173,24 @@ export function AddAmountModal({ visible, food, onConfirm, onClose }: AddAmountM
         {amountInGrams > 0 && (
           <View style={[styles.previewBox, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>
-              Nutritional values for {amountNum} {unitLabel}
+              {t('addAmount.nutritionalValuesFor', { amount: amountNum, unit: unitLabel })}
             </Text>
             <View style={styles.previewGrid}>
               <View style={[styles.previewCell, { backgroundColor: theme.colors.card }]}>
                 <Text style={[styles.previewValue, { color: theme.colors.calories }]}>{macros.calories}</Text>
-                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>Calories</Text>
+                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>{t('macros.calories')}</Text>
               </View>
               <View style={[styles.previewCell, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.previewValue, { color: theme.colors.protein }]}>{macros.protein_g}g</Text>
-                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>Protein</Text>
+                <Text style={[styles.previewValue, { color: theme.colors.protein }]}>{formatMass(macros.protein_g, system)}</Text>
+                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>{t('macros.protein')}</Text>
               </View>
               <View style={[styles.previewCell, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.previewValue, { color: theme.colors.carbs }]}>{macros.carbs_g}g</Text>
-                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>Carbs</Text>
+                <Text style={[styles.previewValue, { color: theme.colors.carbs }]}>{formatMass(macros.carbs_g, system)}</Text>
+                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>{t('macros.carbs')}</Text>
               </View>
               <View style={[styles.previewCell, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.previewValue, { color: theme.colors.fat }]}>{macros.fat_g}g</Text>
-                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>Fat</Text>
+                <Text style={[styles.previewValue, { color: theme.colors.fat }]}>{formatMass(macros.fat_g, system)}</Text>
+                <Text style={[styles.previewLabel, { color: theme.colors.textTertiary }]}>{t('macros.fat')}</Text>
               </View>
             </View>
           </View>
@@ -170,8 +203,8 @@ export function AddAmountModal({ visible, food, onConfirm, onClose }: AddAmountM
           disabled={amountInGrams <= 0}
           style={[styles.confirmButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4, opacity: amountInGrams <= 0 ? 0.5 : 1 }]}
         >
-          <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>Add to Log</Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.onAccent} />
+          <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{t(confirmLabelKey)}</Text>
+          <Ionicons name={mirrorChevron('chevron-forward')} size={18} color={theme.colors.onAccent} />
         </Pressable>
       </View>
     </ModalScreen>

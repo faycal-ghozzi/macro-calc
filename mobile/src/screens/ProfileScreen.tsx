@@ -1,44 +1,41 @@
 import { useEffect, useState } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import * as Haptics from '../lib/haptics'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
-import { ThemePicker } from '../components/ThemePicker'
-import { PaywallModal } from '../components/PaywallModal'
-import { BundleNudgeBanner } from '../components/BundleNudgeBanner'
 import { LoadingState } from '../components/LoadingState'
 import { useTheme } from '../theme/ThemeProvider'
 import { useProfile } from '../hooks/useProfile'
-import { useAuth } from '../contexts/AuthContext'
-import { useEntitlements } from '../hooks/useEntitlements'
-import { useDowngradeUiStore } from '../store/useDowngradeUiStore'
-import { useTour } from '../contexts/TourContext'
-import { getFullTourSteps } from '../lib/tourSteps'
-import { supabase } from '../lib/supabase'
-import { calculateMacroTargets } from '../lib/macroCalc'
-import { PRODUCTS } from '../lib/products'
+import { useUnitsStore } from '../store/useUnitsStore'
+import { calculateMacroTargets, PROTEIN_PER_KG_RANGE, FAT_PER_KG_RANGE } from '../lib/macroCalc'
+import { weightUnitLabel, kgToDisplayValue, displayValueToKg, cmToFtIn, ftInToCm, waterUnitLabel, mlToDisplayValue, displayValueToMl, formatMass } from '../lib/units'
 import type { Profile as ProfileType } from '../types'
+import type { ProfileStackParamList } from '../navigation/ProfileStackNavigator'
 
 const GOALS = [
-  { value: 'lose', label: 'Lose Weight', icon: 'trending-down', desc: '-500 kcal deficit' },
-  { value: 'maintain', label: 'Maintain', icon: 'remove', desc: 'Stay at current weight' },
-  { value: 'gain', label: 'Gain Weight', icon: 'trending-up', desc: '+300 kcal surplus' },
+  { value: 'lose', icon: 'trending-down', labelKey: 'profile.goalLoseWeightLabel', descKey: 'profile.goalLoseWeightDescription' },
+  { value: 'maintain', icon: 'remove', labelKey: 'profile.goalMaintainLabel', descKey: 'profile.goalMaintainDescription' },
+  { value: 'gain', icon: 'trending-up', labelKey: 'profile.goalGainWeightLabel', descKey: 'profile.goalGainWeightDescription' },
 ] as const
 
 const ACTIVITY = [
-  { value: 'sedentary', label: 'Sedentary', desc: 'Little/no exercise' },
-  { value: 'light', label: 'Light', desc: '1-3 days/week' },
-  { value: 'moderate', label: 'Moderate', desc: '3-5 days/week' },
-  { value: 'active', label: 'Active', desc: '6-7 days/week' },
-  { value: 'very_active', label: 'Very Active', desc: 'Hard training daily' },
+  { value: 'sedentary', labelKey: 'profile.activitySedentaryLabel', descKey: 'profile.activitySedentaryDescription' },
+  { value: 'light', labelKey: 'profile.activityLightLabel', descKey: 'profile.activityLightDescription' },
+  { value: 'moderate', labelKey: 'profile.activityModerateLabel', descKey: 'profile.activityModerateDescription' },
+  { value: 'active', labelKey: 'profile.activityActiveLabel', descKey: 'profile.activityActiveDescription' },
+  { value: 'very_active', labelKey: 'profile.activityVeryActiveLabel', descKey: 'profile.activityVeryActiveDescription' },
 ] as const
 
 export default function ProfileScreen() {
   const theme = useTheme()
+  const { t } = useTranslation()
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>()
   const { profile, loading, updateProfile } = useProfile()
-  const { user, signOut } = useAuth()
-  const { startSequence } = useTour()
+  const { system } = useUnitsStore()
   const [form, setForm] = useState<Partial<ProfileType>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -47,6 +44,45 @@ export default function ProfileScreen() {
 
   function set<K extends keyof ProfileType>(key: K, value: ProfileType[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const weightUnit = weightUnitLabel(system)
+  const waterUnit = waterUnitLabel(system)
+  const heightFtIn = form.height_cm ? cmToFtIn(form.height_cm) : null
+
+  function handleHeightFeetChange(v: string) {
+    const feet = Number.parseInt(v, 10) || 0
+    const inches = heightFtIn?.inches ?? 0
+    const cm = Math.round(ftInToCm(feet, inches))
+    set('height_cm', cm > 0 ? cm : (null as unknown as number))
+  }
+
+  function handleHeightInchesChange(v: string) {
+    const inches = Number.parseInt(v, 10) || 0
+    const feet = heightFtIn?.feet ?? 0
+    const cm = Math.round(ftInToCm(feet, inches))
+    set('height_cm', cm > 0 ? cm : (null as unknown as number))
+  }
+
+  function handleWeightChange(v: string) {
+    const value = Number.parseFloat(v)
+    if (!value) { set('current_weight_kg', null as unknown as number); return }
+    set('current_weight_kg', displayValueToKg(value, system))
+  }
+
+  function handleWaterGoalChange(v: string) {
+    const value = Number.parseFloat(v)
+    set('water_goal_ml', value > 0 ? Math.round(displayValueToMl(value, system)) : 0)
+  }
+
+  function handleProteinPerKgChange(v: string) {
+    const value = Number.parseFloat(v)
+    set('protein_per_kg', value > 0 ? value : 0)
+  }
+
+  function handleFatPerKgChange(v: string) {
+    const value = Number.parseFloat(v)
+    set('fat_per_kg', value > 0 ? value : 0)
   }
 
   async function handleSave() {
@@ -70,12 +106,22 @@ export default function ProfileScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8, gap: 14 }}>
-      <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Profile</Text>
+      <View style={styles.topRow}>
+        <Pressable
+          onPress={() => navigation.navigate('Settings')}
+          style={[styles.settingsBtn, { backgroundColor: theme.colors.backgroundElevated }]}
+        >
+          <Ionicons name="settings-outline" size={19} color={theme.colors.textSecondary} />
+        </Pressable>
+      </View>
 
       <Card style={{ gap: 12 }}>
-        <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Personal Info</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="person-outline" size={15} color={theme.colors.accent} />
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionPersonalInfo')}</Text>
+        </View>
         <TextInput
-          placeholder="Your name"
+          placeholder={t('profile.namePlaceholder')}
           placeholderTextColor={theme.colors.textTertiary}
           value={form.name ?? ''}
           onChangeText={(v) => set('name', v)}
@@ -83,20 +129,41 @@ export default function ProfileScreen() {
         />
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1, gap: 5 }}>
-            <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>Height (cm)</Text>
-            <TextInput
-              placeholder="175"
-              placeholderTextColor={theme.colors.textTertiary}
-              value={form.height_cm ? String(form.height_cm) : ''}
-              onChangeText={(v) => set('height_cm', Number.parseFloat(v) || (null as unknown as number))}
-              keyboardType="number-pad"
-              style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
-            />
+            <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>{t('profile.heightLabel', { unit: system === 'imperial' ? 'ft/in' : 'cm' })}</Text>
+            {system === 'imperial' ? (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  placeholder="5"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  value={heightFtIn ? String(heightFtIn.feet) : ''}
+                  onChangeText={handleHeightFeetChange}
+                  keyboardType="number-pad"
+                  style={[styles.input, { flex: 1, backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+                />
+                <TextInput
+                  placeholder="11"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  value={heightFtIn ? String(heightFtIn.inches) : ''}
+                  onChangeText={handleHeightInchesChange}
+                  keyboardType="number-pad"
+                  style={[styles.input, { flex: 1, backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+                />
+              </View>
+            ) : (
+              <TextInput
+                placeholder={t('profile.heightPlaceholder')}
+                placeholderTextColor={theme.colors.textTertiary}
+                value={form.height_cm ? String(form.height_cm) : ''}
+                onChangeText={(v) => set('height_cm', Number.parseFloat(v) || (null as unknown as number))}
+                keyboardType="number-pad"
+                style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+              />
+            )}
           </View>
           <View style={{ flex: 1, gap: 5 }}>
-            <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>Birth Year</Text>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>{t('profile.birthYearLabel')}</Text>
             <TextInput
-              placeholder="1990"
+              placeholder={t('profile.birthYearPlaceholder')}
               placeholderTextColor={theme.colors.textTertiary}
               value={form.birth_year ? String(form.birth_year) : ''}
               onChangeText={(v) => set('birth_year', Number.parseInt(v) || (null as unknown as number))}
@@ -106,29 +173,33 @@ export default function ProfileScreen() {
           </View>
         </View>
         <View style={{ gap: 5 }}>
-          <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>Current Weight (kg)</Text>
+          <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>{t('profile.weightLabel', { unit: weightUnit })}</Text>
           <TextInput
-            placeholder="75"
+            placeholder={t('profile.weightPlaceholder')}
             placeholderTextColor={theme.colors.textTertiary}
-            value={form.current_weight_kg ? String(form.current_weight_kg) : ''}
-            onChangeText={(v) => set('current_weight_kg', Number.parseFloat(v) || (null as unknown as number))}
+            value={form.current_weight_kg ? String(Math.round(kgToDisplayValue(form.current_weight_kg, system) * 10) / 10) : ''}
+            onChangeText={handleWeightChange}
             keyboardType="decimal-pad"
             style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
           />
         </View>
         <View style={{ gap: 8 }}>
-          <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>Gender</Text>
+          <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>{t('profile.genderLabel')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {(['male', 'female', 'other'] as const).map((g) => (
+            {([
+              { value: 'male', labelKey: 'profile.genderMale' },
+              { value: 'female', labelKey: 'profile.genderFemale' },
+              { value: 'other', labelKey: 'profile.genderOther' },
+            ] as const).map((g) => (
               <Pressable
-                key={g}
-                onPress={() => { Haptics.selectionAsync(); set('gender', g) }}
+                key={g.value}
+                onPress={() => { Haptics.selectionAsync(); set('gender', g.value) }}
                 style={[
                   styles.chip,
-                  { flex: 1, backgroundColor: form.gender === g ? theme.colors.accent : theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 },
+                  { flex: 1, backgroundColor: form.gender === g.value ? theme.colors.accent : theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 },
                 ]}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: form.gender === g ? theme.colors.onAccent : theme.colors.textSecondary, textTransform: 'capitalize' }}>{g}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: form.gender === g.value ? theme.colors.onAccent : theme.colors.textSecondary }}>{t(g.labelKey)}</Text>
               </Pressable>
             ))}
           </View>
@@ -136,7 +207,10 @@ export default function ProfileScreen() {
       </Card>
 
       <Card style={{ gap: 10 }}>
-        <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Goal</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="flag-outline" size={15} color={theme.colors.accent} />
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionGoal')}</Text>
+        </View>
         {GOALS.map((g) => (
           <Pressable
             key={g.value}
@@ -153,15 +227,18 @@ export default function ProfileScreen() {
           >
             <Ionicons name={g.icon as any} size={20} color={theme.colors.accent} />
             <View>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary }}>{g.label}</Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 1 }}>{g.desc}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary }}>{t(g.labelKey)}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textTertiary, marginTop: 1 }}>{t(g.descKey)}</Text>
             </View>
           </Pressable>
         ))}
       </Card>
 
       <Card style={{ gap: 10 }}>
-        <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Activity Level</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="walk-outline" size={15} color={theme.colors.accent} />
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionActivityLevel')}</Text>
+        </View>
         {ACTIVITY.map((a) => (
           <Pressable
             key={a.value}
@@ -176,8 +253,8 @@ export default function ProfileScreen() {
               },
             ]}
           >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary }}>{a.label}</Text>
-            <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{a.desc}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary }}>{t(a.labelKey)}</Text>
+            <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{t(a.descKey)}</Text>
           </Pressable>
         ))}
       </Card>
@@ -186,28 +263,83 @@ export default function ProfileScreen() {
         <Card style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="flag" size={15} color={theme.colors.accent} />
-            <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Your Daily Targets</Text>
+            <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionDailyTargets')}</Text>
           </View>
           <View style={styles.targetsGrid}>
             <View style={[styles.targetCell, { backgroundColor: theme.colors.backgroundElevated }]}>
               <Text style={[styles.targetValue, { color: theme.colors.calories }]}>{targets.calories}</Text>
-              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>Calories</Text>
+              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>{t('macros.calories')}</Text>
             </View>
             <View style={[styles.targetCell, { backgroundColor: theme.colors.backgroundElevated }]}>
-              <Text style={[styles.targetValue, { color: theme.colors.protein }]}>{targets.protein_g}g</Text>
-              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>Protein</Text>
+              <Text style={[styles.targetValue, { color: theme.colors.protein }]}>{formatMass(targets.protein_g, system)}</Text>
+              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>{t('macros.protein')}</Text>
             </View>
             <View style={[styles.targetCell, { backgroundColor: theme.colors.backgroundElevated }]}>
-              <Text style={[styles.targetValue, { color: theme.colors.carbs }]}>{targets.carbs_g}g</Text>
-              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>Carbs</Text>
+              <Text style={[styles.targetValue, { color: theme.colors.carbs }]}>{formatMass(targets.carbs_g, system)}</Text>
+              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>{t('macros.carbs')}</Text>
             </View>
             <View style={[styles.targetCell, { backgroundColor: theme.colors.backgroundElevated }]}>
-              <Text style={[styles.targetValue, { color: theme.colors.fat }]}>{targets.fat_g}g</Text>
-              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>Fat</Text>
+              <Text style={[styles.targetValue, { color: theme.colors.fat }]}>{formatMass(targets.fat_g, system)}</Text>
+              <Text style={[styles.targetLabel, { color: theme.colors.textTertiary }]}>{t('macros.fat')}</Text>
             </View>
           </View>
         </Card>
       )}
+
+      <Card style={{ gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="options-outline" size={15} color={theme.colors.accent} />
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionMacroRatios')}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1, gap: 5 }}>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>{t('profile.proteinPerKgLabel')}</Text>
+            <TextInput
+              placeholder={String(PROTEIN_PER_KG_RANGE.default)}
+              placeholderTextColor={theme.colors.textTertiary}
+              value={form.protein_per_kg ? String(form.protein_per_kg) : ''}
+              onChangeText={handleProteinPerKgChange}
+              keyboardType="decimal-pad"
+              style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+            />
+          </View>
+          <View style={{ flex: 1, gap: 5 }}>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>{t('profile.fatPerKgLabel')}</Text>
+            <TextInput
+              placeholder={String(FAT_PER_KG_RANGE.default)}
+              placeholderTextColor={theme.colors.textTertiary}
+              value={form.fat_per_kg ? String(form.fat_per_kg) : ''}
+              onChangeText={handleFatPerKgChange}
+              keyboardType="decimal-pad"
+              style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+            />
+          </View>
+        </View>
+        <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>
+          {t('profile.macroRatiosHint', {
+            proteinMin: PROTEIN_PER_KG_RANGE.min, proteinMax: PROTEIN_PER_KG_RANGE.max,
+            fatMin: FAT_PER_KG_RANGE.min, fatMax: FAT_PER_KG_RANGE.max,
+          })}
+        </Text>
+      </Card>
+
+      <Card style={{ gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="water-outline" size={15} color={theme.colors.water} />
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionWaterGoal')}</Text>
+        </View>
+        <View style={{ gap: 5 }}>
+          <Text style={[styles.fieldLabel, { color: theme.colors.textTertiary }]}>{t('profile.waterGoalLabel', { unit: waterUnit })}</Text>
+          <TextInput
+            placeholder="2000"
+            placeholderTextColor={theme.colors.textTertiary}
+            value={form.water_goal_ml ? String(Math.round(mlToDisplayValue(form.water_goal_ml, system))) : ''}
+            onChangeText={handleWaterGoalChange}
+            keyboardType="number-pad"
+            style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+          />
+        </View>
+      </Card>
 
       <Pressable
         onPress={handleSave}
@@ -215,243 +347,15 @@ export default function ProfileScreen() {
         style={[styles.saveButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4, opacity: saving ? 0.6 : 1 }]}
       >
         {saving ? <ActivityIndicator color={theme.colors.onAccent} /> : <Ionicons name={saved ? 'checkmark' : 'save-outline'} size={18} color={theme.colors.onAccent} />}
-        <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{saved ? 'Saved!' : 'Save Profile'}</Text>
+        <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{saved ? t('profile.saved') : t('profile.saveProfile')}</Text>
       </Pressable>
-
-      <Card style={{ gap: 10 }}>
-        <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Appearance</Text>
-        <ThemePicker />
-      </Card>
-
-      <Pressable
-        onPress={() => {
-          Haptics.selectionAsync()
-          startSequence(getFullTourSteps())
-        }}
-        style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 }]}
-      >
-        <Ionicons name="play-circle-outline" size={16} color={theme.colors.textSecondary} />
-        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>Replay Tour</Text>
-      </Pressable>
-
-      <SubscriptionSection />
-
-      <SecuritySection
-        email={user?.email ?? ''}
-        onSignOut={signOut}
-        onRequestDeletion={() => updateProfile({ deletion_requested_at: new Date().toISOString() }).then(signOut)}
-      />
     </Screen>
   )
 }
 
-function SubscriptionSection() {
-  const theme = useTheme()
-  const { flags } = useEntitlements()
-  const setDismissed = useDowngradeUiStore((s) => s.setDismissed)
-  const [showProPaywall, setShowProPaywall] = useState(false)
-
-  const planLabel = (() => {
-    if (flags.isComped) return 'Comped account, everything unlocked'
-    if (flags.activeProductIds.includes('pro_bundle')) return PRODUCTS.pro_bundle.name
-    if (flags.activeProductIds.length > 0) return `${flags.activeProductIds.length} add-on${flags.activeProductIds.length === 1 ? '' : 's'} active`
-    return 'Free plan'
-  })()
-
-  return (
-    <Card style={{ gap: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Ionicons name="card-outline" size={15} color={theme.colors.textTertiary} />
-        <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Subscription</Text>
-      </View>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary }}>{planLabel}</Text>
-
-      <BundleNudgeBanner activeProductIds={flags.activeProductIds} onPress={() => setShowProPaywall(true)} />
-
-      {!flags.isComped && !flags.activeProductIds.includes('pro_bundle') && (
-        <Pressable
-          onPress={() => setShowProPaywall(true)}
-          style={[styles.secondaryButton, { backgroundColor: theme.colors.accentSoft, borderRadius: theme.style.cardRadius - 8 }]}
-        >
-          <Ionicons name="sparkles-outline" size={14} color={theme.colors.accent} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>Upgrade to {PRODUCTS.pro_bundle.name}</Text>
-        </Pressable>
-      )}
-
-      {flags.isSlotLocked && (
-        <Pressable
-          onPress={() => setDismissed(false)}
-          style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8 }]}
-        >
-          <Ionicons name="list-outline" size={14} color={theme.colors.textSecondary} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary }}>Review active items</Text>
-        </Pressable>
-      )}
-
-      <PaywallModal
-        visible={showProPaywall}
-        productId="pro_bundle"
-        headline="Unlock everything"
-        onClose={() => setShowProPaywall(false)}
-      />
-    </Card>
-  )
-}
-
-function SecuritySection({
-  email,
-  onSignOut,
-  onRequestDeletion,
-}: {
-  email: string
-  onSignOut: () => void
-  onRequestDeletion: () => void
-}) {
-  const theme = useTheme()
-  const [newEmail, setNewEmail] = useState('')
-  const [currentPw, setCurrentPw] = useState('')
-  const [newPw, setNewPw] = useState('')
-  const [confirmPw, setConfirmPw] = useState('')
-  const [emailStatus, setEmailStatus] = useState<string | null>(null)
-  const [pwStatus, setPwStatus] = useState<string | null>(null)
-  const [emailLoading, setEmailLoading] = useState(false)
-  const [pwLoading, setPwLoading] = useState(false)
-
-  async function handleEmailUpdate() {
-    if (!newEmail.trim()) return
-    setEmailLoading(true)
-    setEmailStatus(null)
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
-    setEmailLoading(false)
-    setEmailStatus(error ? error.message : 'Confirmation sent to new email address.')
-    if (!error) { setNewEmail(''); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) }
-  }
-
-  async function handlePasswordUpdate() {
-    if (newPw !== confirmPw) { setPwStatus('Passwords do not match.'); return }
-    if (newPw.length < 8) { setPwStatus('Password must be at least 8 characters.'); return }
-    setPwLoading(true)
-    setPwStatus(null)
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: currentPw })
-    if (signInError) { setPwLoading(false); setPwStatus('Current password is incorrect.'); return }
-    const { error } = await supabase.auth.updateUser({ password: newPw })
-    setPwLoading(false)
-    setPwStatus(error ? error.message : 'Password updated successfully.')
-    if (!error) { setCurrentPw(''); setNewPw(''); setConfirmPw(''); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) }
-  }
-
-  return (
-    <View style={{ gap: 14 }}>
-      <Card style={{ gap: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="mail-outline" size={15} color={theme.colors.textTertiary} />
-          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Update Email</Text>
-        </View>
-        <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>Current: {email}</Text>
-        <TextInput
-          placeholder="New email address"
-          placeholderTextColor={theme.colors.textTertiary}
-          value={newEmail}
-          onChangeText={setNewEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
-        />
-        {emailStatus && (
-          <Text style={{ fontSize: 11, color: emailStatus.includes('sent') ? theme.colors.success : theme.colors.danger }}>{emailStatus}</Text>
-        )}
-        <Pressable
-          onPress={handleEmailUpdate}
-          disabled={emailLoading || !newEmail.trim()}
-          style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8, opacity: emailLoading || !newEmail.trim() ? 0.4 : 1 }]}
-        >
-          {emailLoading ? <ActivityIndicator size="small" color={theme.colors.textPrimary} /> : <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} />}
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary }}>Update Email</Text>
-        </Pressable>
-      </Card>
-
-      <Card style={{ gap: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="lock-closed-outline" size={15} color={theme.colors.textTertiary} />
-          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Change Password</Text>
-        </View>
-        <TextInput
-          placeholder="Current password"
-          placeholderTextColor={theme.colors.textTertiary}
-          value={currentPw}
-          onChangeText={setCurrentPw}
-          secureTextEntry
-          style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
-        />
-        <TextInput
-          placeholder="New password (8+ chars)"
-          placeholderTextColor={theme.colors.textTertiary}
-          value={newPw}
-          onChangeText={setNewPw}
-          secureTextEntry
-          style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
-        />
-        <TextInput
-          placeholder="Confirm new password"
-          placeholderTextColor={theme.colors.textTertiary}
-          value={confirmPw}
-          onChangeText={setConfirmPw}
-          secureTextEntry
-          style={[
-            styles.input,
-            { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 },
-            confirmPw && confirmPw !== newPw ? { borderWidth: 1, borderColor: theme.colors.danger } : null,
-          ]}
-        />
-        {pwStatus && (
-          <Text style={{ fontSize: 11, color: pwStatus.includes('successfully') ? theme.colors.success : theme.colors.danger }}>{pwStatus}</Text>
-        )}
-        <Pressable
-          onPress={handlePasswordUpdate}
-          disabled={pwLoading || !currentPw || !newPw || newPw !== confirmPw}
-          style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8, opacity: pwLoading || !currentPw || !newPw || newPw !== confirmPw ? 0.4 : 1 }]}
-        >
-          {pwLoading ? <ActivityIndicator size="small" color={theme.colors.textPrimary} /> : <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} />}
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary }}>Update Password</Text>
-        </Pressable>
-      </Card>
-
-      <Card>
-        <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onSignOut() }} style={styles.signOutButton}>
-          <Ionicons name="log-out-outline" size={17} color={theme.colors.danger} />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.danger }}>Sign Out</Text>
-        </Pressable>
-      </Card>
-
-      <Card style={{ gap: 10, borderWidth: 1, borderColor: theme.colors.danger + '33' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="warning-outline" size={15} color={theme.colors.danger} />
-          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>Danger Zone</Text>
-        </View>
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-            Alert.alert(
-              'Delete account?',
-              'This permanently deletes your account and all your data (food logs, weight history, meals, exercise logs) after a 30-day grace period. You can cancel any time before then by logging back in. After 30 days this cannot be undone.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete Account', style: 'destructive', onPress: onRequestDeletion },
-              ]
-            )
-          }}
-          style={[styles.secondaryButton, { backgroundColor: theme.colors.danger + '1A', borderRadius: theme.style.cardRadius - 8 }]}
-        >
-          <Ionicons name="trash-outline" size={14} color={theme.colors.danger} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.danger }}>Delete Account</Text>
-        </Pressable>
-      </Card>
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
-  title: { fontSize: 19, fontWeight: '700' },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  settingsBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   sectionLabel: { fontSize: 13, fontWeight: '700' },
   fieldLabel: { fontSize: 11, fontWeight: '600' },
   input: { paddingHorizontal: 14, paddingVertical: 12, fontSize: 14 },
@@ -463,6 +367,4 @@ const styles = StyleSheet.create({
   targetValue: { fontSize: 18, fontWeight: '700' },
   targetLabel: { fontSize: 11, marginTop: 2 },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
-  secondaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11 },
-  signOutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 6 },
 })

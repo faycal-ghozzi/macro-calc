@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Modal, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { useTheme } from '../theme/ThemeProvider'
 import { PRODUCTS, type ProductId } from '../lib/products'
@@ -16,6 +17,7 @@ interface PaywallModalProps {
 
 export function PaywallModal({ visible, productId, headline, onClose }: PaywallModalProps) {
   const theme = useTheme()
+  const { t } = useTranslation()
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [purchasing, setPurchasing] = useState(false)
   const product = productId ? PRODUCTS[productId] : null
@@ -49,8 +51,8 @@ export function PaywallModal({ visible, productId, headline, onClose }: PaywallM
             </Pressable>
           </View>
 
-          <Text style={[styles.headline, { color: theme.colors.textPrimary }]}>{headline ?? product.name}</Text>
-          <Text style={[styles.description, { color: theme.colors.textSecondary }]}>{product.description}</Text>
+          <Text style={[styles.headline, { color: theme.colors.textPrimary }]}>{headline ?? t(product.nameKey)}</Text>
+          <Text style={[styles.description, { color: theme.colors.textSecondary }]}>{t(product.descriptionKey)}</Text>
 
           <View style={[styles.billingToggle, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
             {(['monthly', 'annual'] as const).map((b) => (
@@ -60,7 +62,7 @@ export function PaywallModal({ visible, productId, headline, onClose }: PaywallM
                 style={[styles.billingButton, { borderRadius: theme.style.cardRadius - 10 }, billing === b && { backgroundColor: theme.colors.accent }]}
               >
                 <Text style={{ fontSize: 13, fontWeight: '700', color: billing === b ? theme.colors.onAccent : theme.colors.textSecondary }}>
-                  {b === 'monthly' ? 'Monthly' : 'Annual'}
+                  {b === 'monthly' ? t('paywall.monthly') : t('paywall.annual')}
                 </Text>
               </Pressable>
             ))}
@@ -68,7 +70,7 @@ export function PaywallModal({ visible, productId, headline, onClose }: PaywallM
 
           <Text style={[styles.price, { color: theme.colors.textPrimary }]}>
             ${price.toFixed(2)}
-            <Text style={{ fontSize: 13, fontWeight: '500', color: theme.colors.textTertiary }}> / {billing === 'monthly' ? 'mo' : 'yr'}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: theme.colors.textTertiary }}> {billing === 'monthly' ? t('paywall.perMonth') : t('paywall.perYear')}</Text>
           </Text>
 
           <Pressable
@@ -77,10 +79,10 @@ export function PaywallModal({ visible, productId, headline, onClose }: PaywallM
             style={[styles.subscribeButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4, opacity: purchasing ? 0.6 : 1 }]}
           >
             {purchasing ? <ActivityIndicator color={theme.colors.onAccent} /> : null}
-            <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>Subscribe</Text>
+            <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{t('paywall.subscribe')}</Text>
           </Pressable>
           <Pressable onPress={onClose} style={{ paddingVertical: 12 }}>
-            <Text style={{ color: theme.colors.textTertiary, fontSize: 13, textAlign: 'center' }}>Maybe later</Text>
+            <Text style={{ color: theme.colors.textTertiary, fontSize: 13, textAlign: 'center' }}>{t('paywall.maybeLater')}</Text>
           </Pressable>
         </SafeAreaView>
       </View>

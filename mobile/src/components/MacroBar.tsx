@@ -9,9 +9,10 @@ interface MacroBarProps {
   target: number
   color: string
   unit?: string
+  decimals?: number
 }
 
-export function MacroBar({ label, current, target, color, unit = 'g' }: MacroBarProps) {
+export function MacroBar({ label, current, target, color, unit = 'g', decimals = 0 }: MacroBarProps) {
   const theme = useTheme()
   const pct = target > 0 ? Math.min((current / target) * 100, 100) : 0
   const over = current > target
@@ -19,18 +20,20 @@ export function MacroBar({ label, current, target, color, unit = 'g' }: MacroBar
 
   useEffect(() => {
     width.value = withTiming(pct, { duration: 700, easing: Easing.out(Easing.cubic) })
-  }, [pct])
+  }, [pct, width])
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: `${width.value}%`,
   }))
+
+  const fmt = (n: number) => (decimals > 0 ? n.toFixed(decimals) : String(Math.round(n)))
 
   return (
     <View style={{ gap: 6 }}>
       <View style={styles.row}>
         <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{label}</Text>
         <Text style={[styles.value, { color: over ? theme.colors.danger : theme.colors.textPrimary }]}>
-          {Math.round(current)}{unit} <Text style={{ color: theme.colors.textTertiary }}>/ {Math.round(target)}{unit}</Text>
+          {fmt(current)}{unit} <Text style={{ color: theme.colors.textTertiary }}>/ {fmt(target)}{unit}</Text>
         </Text>
       </View>
       <View style={[styles.track, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.pillRadius }]}>

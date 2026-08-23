@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Modal, ScrollView, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
 import { useTheme } from '../theme/ThemeProvider'
 import { useEntitlements } from '../hooks/useEntitlements'
@@ -14,6 +15,7 @@ const MAX_ACTIVE_FAVORITES = 5
 
 export function DowngradeStatusModal() {
   const theme = useTheme()
+  const { t } = useTranslation()
   const { row, flags, refetch } = useEntitlements()
   const { meals, refetch: refetchMeals } = useMeals()
   const { rawFavorites, refetch: refetchFavorites } = useFavorites()
@@ -97,7 +99,7 @@ export function DowngradeStatusModal() {
         <SafeAreaView edges={['bottom']} style={[styles.sheet, { backgroundColor: theme.colors.card, borderTopLeftRadius: theme.style.cardRadius + 6, borderTopRightRadius: theme.style.cardRadius + 6 }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-              {isPending ? 'Choose what stays active' : "Here's what's active now"}
+              {isPending ? t('downgrade.choosePendingTitle') : t('downgrade.chooseDoneTitle')}
             </Text>
             <Pressable onPress={() => setDismissed(true)} style={[styles.closeBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
               <Ionicons name="close" size={18} color={theme.colors.textSecondary} />
@@ -107,13 +109,12 @@ export function DowngradeStatusModal() {
           {isPending ? (
             <>
               <Text style={[styles.body, { color: theme.colors.textSecondary }]}>
-                Your plan now includes 1 saved meal and 5 favorites. Choose what to keep active, and everything else
-                will be archived, not deleted, and comes back if you resubscribe.
-                {daysLeft !== null ? ` If you don't choose within ${daysLeft} day${daysLeft === 1 ? '' : 's'}, we'll automatically keep your most recently used items and archive the rest.` : ''}
+                {t('downgrade.body')}
+                {daysLeft !== null ? t('downgrade.autoArchiveWarning', { count: daysLeft }) : ''}
               </Text>
 
               <ScrollView style={{ maxHeight: 340 }}>
-                <Text style={[styles.sectionLabel, { color: theme.colors.textTertiary }]}>Meal (choose 1)</Text>
+                <Text style={[styles.sectionLabel, { color: theme.colors.textTertiary }]}>{t('downgrade.mealChooseOne')}</Text>
                 {meals.map((meal) => (
                   <Pressable
                     key={meal.id}
@@ -126,7 +127,7 @@ export function DowngradeStatusModal() {
                 ))}
 
                 <Text style={[styles.sectionLabel, { color: theme.colors.textTertiary, marginTop: 12 }]}>
-                  Favorites (choose up to {MAX_ACTIVE_FAVORITES}), {selectedFavIds.length}/{MAX_ACTIVE_FAVORITES} selected
+                  {t('downgrade.favoritesChoose', { max: MAX_ACTIVE_FAVORITES, selected: selectedFavIds.length })}
                 </Text>
                 {rawFavorites.map((fav) => (
                   <Pressable
@@ -146,21 +147,24 @@ export function DowngradeStatusModal() {
                 style={[styles.confirmButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4, opacity: saving ? 0.6 : 1 }]}
               >
                 {saving ? <ActivityIndicator color={theme.colors.onAccent} /> : null}
-                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>Confirm Selection</Text>
+                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{t('downgrade.confirmSelection')}</Text>
               </Pressable>
             </>
           ) : (
             <>
               <Text style={[styles.body, { color: theme.colors.textSecondary }]}>
                 {archivedCounts
-                  ? `${archivedCounts.meals} meal${archivedCounts.meals === 1 ? '' : 's'} and ${archivedCounts.favorites} favorite${archivedCounts.favorites === 1 ? '' : 's'} were archived, not deleted.`
-                  : 'Some items were archived, not deleted.'} Resubscribe any time to get everything back instantly.
+                  ? t('downgrade.archivedSummary', {
+                      meals: t('downgrade.mealCountPhrase', { count: archivedCounts.meals }),
+                      favorites: t('downgrade.favoriteCountPhrase', { count: archivedCounts.favorites }),
+                    })
+                  : t('downgrade.archivedSummaryFallback')} {t('downgrade.resubscribeHint')}
               </Text>
               <Pressable
                 onPress={handleDismissSummary}
                 style={[styles.confirmButton, { backgroundColor: theme.colors.accent, borderRadius: theme.style.cardRadius - 4 }]}
               >
-                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>Got it</Text>
+                <Text style={{ color: theme.colors.onAccent, fontWeight: '700', fontSize: 15 }}>{t('common.gotIt')}</Text>
               </Pressable>
             </>
           )}
