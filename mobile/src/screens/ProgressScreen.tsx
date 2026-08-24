@@ -14,6 +14,7 @@ import { CalorieBarChart } from '../components/CalorieBarChart'
 import { PaywallModal } from '../components/PaywallModal'
 import { AnimatedPressable } from '../components/AnimatedPressable'
 import { MetricDetailModal } from '../components/MetricDetailModal'
+import { DateRangePicker } from '../components/DateRangePicker'
 import { useTheme } from '../theme/ThemeProvider'
 import { useWeightLog } from '../hooks/useWeightLog'
 import { useReports, DayReport } from '../hooks/useReports'
@@ -23,7 +24,7 @@ import { useUnitsStore } from '../store/useUnitsStore'
 import { calculateMacroTargets } from '../lib/macroCalc'
 import { weightUnitLabel, kgToDisplayValue, displayValueToKg, weightBounds, formatWeightDelta, formatMass, gToDisplayValue, massUnitLabel } from '../lib/units'
 import { exportNutritionReport, exportWeightReport } from '../lib/pdfReport'
-import { ChartPoint } from '../lib/chartUtils'
+import { ChartPoint, dateKey } from '../lib/chartUtils'
 
 type Tab = 'days' | 'allTime' | 'weight'
 
@@ -45,8 +46,10 @@ export default function ProgressScreen() {
   const weightUnit = weightUnitLabel(system)
   const [tab, setTab] = useState<Tab>('days')
   const [selectedDays, setSelectedDays] = useState(FREE_MAX_DAYS)
+  const [allTimeFrom, setAllTimeFrom] = useState<Date | null>(null)
+  const [allTimeTo, setAllTimeTo] = useState<Date | null>(null)
   const { entries, loading: wLoading, addEntry, deleteEntry, latestEntry, totalChange } = useWeightLog()
-  const { getDays, allTime, loading: rLoading } = useReports()
+  const { getDays, getRange, allTime, loading: rLoading } = useReports()
   const { profile } = useProfile()
   const { flags } = useEntitlements()
   const [showReportsPaywall, setShowReportsPaywall] = useState(false)
@@ -79,10 +82,24 @@ export default function ProgressScreen() {
   const trendColor = totalChange < -0.1 ? theme.colors.success : totalChange > 0.1 ? theme.colors.danger : theme.colors.textTertiary
 
   const weightChartData = entries.map((e) => ({ date: e.logged_at.slice(5), weight: e.weight_kg }))
-  const report = tab === 'days' ? getDays(selectedDays) : tab === 'allTime' ? allTime : null
+  const allTimeDays = allTime?.days ?? []
+  const earliestAllTimeDate = allTimeDays[0]?.date ?? null
+  const latestAllTimeDate = allTimeDays[allTimeDays.length - 1]?.date ?? null
+  const allTimeFromKey = allTimeFrom ? dateKey(allTimeFrom) : null
+  const allTimeToKey = allTimeTo ? dateKey(allTimeTo) : null
+  const isAllTimeRangeSet = tab === 'allTime' && (allTimeFromKey !== null || allTimeToKey !== null)
+  const report = tab === 'days'
+    ? getDays(selectedDays)
+    : tab === 'allTime'
+      ? (isAllTimeRangeSet
+        ? getRange(allTimeFromKey ?? earliestAllTimeDate ?? '', allTimeToKey ?? latestAllTimeDate ?? '')
+        : allTime)
+      : null
   const calChartData = tab === 'days' && report
     ? report.days.map((d) => ({ date: d.date.slice(5), consumed: Math.round(d.calories), burned: Math.round(d.calories_burned) }))
     : []
+  const allTimeMinDate = earliestAllTimeDate ? new Date(earliestAllTimeDate) : undefined
+  const allTimeMaxDate = latestAllTimeDate ? new Date(latestAllTimeDate) : undefined
 
   function handleSelectDays(n: number) {
     Haptics.selectionAsync()
@@ -95,12 +112,14 @@ export default function ProgressScreen() {
     setDetail(config)
   }
 
+  // The drill-down modal always looks at the full history (not whichever
+  // day-count/range is currently selected on this screen) - it has its own
+  // date range picker for narrowing, so it shouldn't inherit this one.
   function pointsFor(key: keyof DayReport): ChartPoint[] {
-    return report ? report.days.map((d) => ({ date: d.date, value: d[key] as number })) : []
+    return allTimeDays.map((d) => ({ date: d.date, value: d[key] as number }))
   }
 
-  async function handleExport() {
-    if (exporting) return
+  async function runExport() {
     Haptics.selectionAsync()
     setExporting(true)
     try {
@@ -123,6 +142,22 @@ export default function ProgressScreen() {
     } finally {
       setExporting(false)
     }
+  }
+
+  function handleExport() {
+    if (exporting) return
+    if (isAllTimeRangeSet && report) {
+      Alert.alert(
+        t('progress.rangeExportWarningTitle'),
+        t('progress.rangeExportWarningBody', { from: report.days[0]?.date ?? '', to: report.days[report.days.length - 1]?.date ?? '' }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('progress.rangeExportConfirm'), onPress: () => { runExport() } },
+        ]
+      )
+      return
+    }
+    runExport()
   }
 
   return (
@@ -179,6 +214,19 @@ export default function ProgressScreen() {
               </Pressable>
             )
           })}
+        </View>
+      )}
+
+      {tab === 'allTime' && (
+        <View style={{ marginBottom: 16 }}>
+          <DateRangePicker
+            from={allTimeFrom}
+            to={allTimeTo}
+            onChangeFrom={setAllTimeFrom}
+            onChangeTo={setAllTimeTo}
+            minDate={allTimeMinDate}
+            maxDate={allTimeMaxDate}
+          />
         </View>
       )}
 

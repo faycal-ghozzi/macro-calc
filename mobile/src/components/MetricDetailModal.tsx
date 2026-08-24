@@ -1,12 +1,13 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, ScrollView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { ModalScreen } from './ModalScreen'
 import { Card } from './Card'
 import { MetricBarChart } from './MetricBarChart'
 import { EmptyState } from './EmptyState'
+import { DateRangePicker } from './DateRangePicker'
 import { useTheme } from '../theme/ThemeProvider'
-import { bucketPoints, ChartPoint } from '../lib/chartUtils'
+import { bucketPoints, dateKey, ChartPoint } from '../lib/chartUtils'
 
 interface MetricDetailModalProps {
   visible: boolean
@@ -24,18 +25,38 @@ const MAX_CHART_POINTS = 45
 export function MetricDetailModal({ visible, onClose, title, color, points, formatValue, targetValue }: MetricDetailModalProps) {
   const theme = useTheme()
   const { t } = useTranslation()
+  const [rangeFrom, setRangeFrom] = useState<Date | null>(null)
+  const [rangeTo, setRangeTo] = useState<Date | null>(null)
 
-  const active = useMemo(() => points.filter((p) => p.value > 0), [points])
+  // A fresh look at a (possibly different) metric each time this opens -
+  // any range picked while viewing the last one shouldn't carry over.
+  useEffect(() => {
+    if (visible) { setRangeFrom(null); setRangeTo(null) }
+  }, [visible])
+
+  const dataMinDate = points[0]?.date ? new Date(points[0].date) : undefined
+  const dataMaxDate = points[points.length - 1]?.date ? new Date(points[points.length - 1].date) : undefined
+
+  const filteredPoints = useMemo(() => {
+    if (!rangeFrom && !rangeTo) return points
+    const start = rangeFrom ? dateKey(rangeFrom) : (points[0]?.date ?? '')
+    const end = rangeTo ? dateKey(rangeTo) : (points[points.length - 1]?.date ?? '')
+    return points.filter((p) => p.date >= start && p.date <= end)
+  }, [points, rangeFrom, rangeTo])
+
+  const active = useMemo(() => filteredPoints.filter((p) => p.value > 0), [filteredPoints])
   const avg = active.length ? active.reduce((sum, p) => sum + p.value, 0) / active.length : 0
   const max = active.length ? Math.max(...active.map((p) => p.value)) : 0
   const min = active.length ? Math.min(...active.map((p) => p.value)) : 0
   const total = active.reduce((sum, p) => sum + p.value, 0)
-  const chartData = useMemo(() => bucketPoints(points, MAX_CHART_POINTS), [points])
+  const chartData = useMemo(() => bucketPoints(filteredPoints, MAX_CHART_POINTS), [filteredPoints])
   const listRows = useMemo(() => [...active].reverse().slice(0, MAX_LIST_ROWS), [active])
 
   return (
     <ModalScreen visible={visible} title={title} onClose={onClose}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <DateRangePicker from={rangeFrom} to={rangeTo} onChangeFrom={setRangeFrom} onChangeTo={setRangeTo} minDate={dataMinDate} maxDate={dataMaxDate} />
+
         {active.length === 0 ? (
           <EmptyState icon="bar-chart-outline" title={t('progress.detailEmpty')} />
         ) : (

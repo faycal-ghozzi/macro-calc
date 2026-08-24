@@ -290,6 +290,11 @@
     "detailEmpty": "No data yet for this range.",
     "detailMoreInExport_one": "+{{count}} more day in your exported report",
     "detailMoreInExport_other": "+{{count}} more days in your exported report",
+    "rangeFrom": "From",
+    "rangeTo": "To",
+    "rangeExportWarningTitle": "Exporting a date range",
+    "rangeExportWarningBody": "You have {{from}} to {{to}} selected - this export will only include that range, not your full history. Clear the date range first if you want to export everything.",
+    "rangeExportConfirm": "Export Range",
     "paywallHeadline": "Unlock your full history"
   },
   "exercise": {

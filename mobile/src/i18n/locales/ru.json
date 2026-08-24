@@ -300,6 +300,11 @@
     "detailMoreInExport_few": "+{{count}} дня в экспортированном отчёте",
     "detailMoreInExport_many": "+{{count}} дней в экспортированном отчёте",
     "detailMoreInExport_other": "+{{count}} дня в экспортированном отчёте",
+    "rangeFrom": "С",
+    "rangeTo": "По",
+    "rangeExportWarningTitle": "Экспорт периода",
+    "rangeExportWarningBody": "Вы выбрали период с {{from}} по {{to}} - экспорт будет содержать только этот период, а не всю историю. Сбросьте период, если хотите экспортировать всё.",
+    "rangeExportConfirm": "Экспортировать период",
     "paywallHeadline": "Откройте полную историю"
   },
   "exercise": {

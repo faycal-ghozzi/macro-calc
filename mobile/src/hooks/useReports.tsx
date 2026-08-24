@@ -78,6 +78,7 @@ function summarize(days: DayReport[]): ReportSummary {
 
 interface ReportsContextType {
   getDays: (n: number) => ReportSummary
+  getRange: (fromDate: string, toDate: string) => ReportSummary
   allTime: ReportSummary | null
   loading: boolean
   refetch: () => Promise<void>
@@ -85,6 +86,7 @@ interface ReportsContextType {
 
 const ReportsContext = createContext<ReportsContextType>({
   getDays: () => summarize([]),
+  getRange: () => summarize([]),
   allTime: null,
   loading: true,
   refetch: async () => {},
@@ -157,9 +159,14 @@ export function ReportsProvider({ children }: { children: ReactNode }) {
     return summarize(windowDays.slice(-clamped))
   }, [windowDays])
 
+  const getRange = useCallback((fromDate: string, toDate: string): ReportSummary => {
+    if (!allTime) return summarize([])
+    return summarize(allTime.days.filter((d) => d.date >= fromDate && d.date <= toDate))
+  }, [allTime])
+
   const value = useMemo(
-    () => ({ getDays, allTime, loading, refetch: fetchReports }),
-    [getDays, allTime, loading, fetchReports]
+    () => ({ getDays, getRange, allTime, loading, refetch: fetchReports }),
+    [getDays, getRange, allTime, loading, fetchReports]
   )
 
   return <ReportsContext.Provider value={value}>{children}</ReportsContext.Provider>

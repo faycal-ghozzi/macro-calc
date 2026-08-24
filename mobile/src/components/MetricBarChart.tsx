@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { View, Text } from 'react-native'
+import { View } from 'react-native'
 import Svg, { Rect, Line as SvgLine, G } from 'react-native-svg'
 import Animated, { useAnimatedProps, useSharedValue, withTiming, withDelay, Easing } from 'react-native-reanimated'
 import { useTheme } from '../theme/ThemeProvider'
@@ -59,10 +59,6 @@ export function MetricBarChart({ data, color, target, height = 160 }: { data: Ch
           )
         })}
       </Svg>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-        <Text style={{ fontSize: 10, color: theme.colors.textTertiary }}>{data[0]?.date}</Text>
-        <Text style={{ fontSize: 10, color: theme.colors.textTertiary }}>{data[data.length - 1]?.date}</Text>
-      </View>
     </View>
   )
 }

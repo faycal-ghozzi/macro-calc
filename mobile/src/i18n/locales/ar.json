@@ -310,6 +310,11 @@
     "detailMoreInExport_few": "+{{count}} أيام في التقرير المصدَّر",
     "detailMoreInExport_many": "+{{count}} يومًا في التقرير المصدَّر",
     "detailMoreInExport_other": "+{{count}} يوم في التقرير المصدَّر",
+    "rangeFrom": "من",
+    "rangeTo": "إلى",
+    "rangeExportWarningTitle": "تصدير فترة زمنية",
+    "rangeExportWarningBody": "لقد حددت الفترة من {{from}} إلى {{to}} - سيشمل هذا التصدير هذه الفترة فقط، وليس سجلك الكامل. أعد ضبط الفترة إذا كنت تريد تصدير كل شيء.",
+    "rangeExportConfirm": "تصدير الفترة",
     "paywallHeadline": "افتح سجلك الكامل"
   },
   "exercise": {

@@ -290,6 +290,11 @@
     "detailEmpty": "Noch keine Daten für diesen Zeitraum.",
     "detailMoreInExport_one": "+{{count}} weiterer Tag im exportierten Bericht",
     "detailMoreInExport_other": "+{{count}} weitere Tage im exportierten Bericht",
+    "rangeFrom": "Von",
+    "rangeTo": "Bis",
+    "rangeExportWarningTitle": "Zeitraum wird exportiert",
+    "rangeExportWarningBody": "Du hast den Zeitraum {{from}} bis {{to}} ausgewählt - dieser Export enthält nur diesen Zeitraum, nicht deinen vollständigen Verlauf. Setze den Zeitraum zurück, wenn du alles exportieren möchtest.",
+    "rangeExportConfirm": "Zeitraum exportieren",
     "paywallHeadline": "Schalte deinen vollständigen Verlauf frei"
   },
   "exercise": {

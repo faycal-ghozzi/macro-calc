@@ -285,6 +285,11 @@
     "detailTotal": "总计",
     "detailEmpty": "该时间段暂无数据。",
     "detailMoreInExport_other": "导出的报告中还有 {{count}} 天数据",
+    "rangeFrom": "开始日期",
+    "rangeTo": "结束日期",
+    "rangeExportWarningTitle": "导出指定时间段",
+    "rangeExportWarningBody": "你已选择 {{from}} 至 {{to}} 的时间段——本次导出将只包含该时间段的数据,而非完整历史记录。如需导出全部数据,请先清除日期选择。",
+    "rangeExportConfirm": "导出该时间段",
     "paywallHeadline": "解锁完整历史记录"
   },
   "exercise": {

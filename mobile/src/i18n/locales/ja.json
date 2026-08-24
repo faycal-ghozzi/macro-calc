@@ -285,6 +285,11 @@
     "detailTotal": "合計",
     "detailEmpty": "この期間のデータはまだありません。",
     "detailMoreInExport_other": "エクスポートしたレポートにあと{{count}}日分あります",
+    "rangeFrom": "開始日",
+    "rangeTo": "終了日",
+    "rangeExportWarningTitle": "期間を指定してエクスポート",
+    "rangeExportWarningBody": "{{from}}〜{{to}}の期間が選択されています。この期間のデータのみがエクスポートされ、全履歴は含まれません。すべてをエクスポートするには、期間指定を解除してください。",
+    "rangeExportConfirm": "この期間をエクスポート",
     "paywallHeadline": "全履歴のロックを解除"
   },
   "exercise": {

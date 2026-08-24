@@ -285,6 +285,11 @@
     "detailTotal": "합계",
     "detailEmpty": "이 기간에 대한 데이터가 아직 없습니다.",
     "detailMoreInExport_other": "내보낸 보고서에 {{count}}일 더 있습니다",
+    "rangeFrom": "시작일",
+    "rangeTo": "종료일",
+    "rangeExportWarningTitle": "기간 내보내기",
+    "rangeExportWarningBody": "{{from}}부터 {{to}}까지의 기간이 선택되어 있습니다 - 이 내보내기에는 전체 기록이 아닌 해당 기간의 데이터만 포함됩니다. 전체를 내보내려면 먼저 기간 선택을 초기화하세요.",
+    "rangeExportConfirm": "선택 기간 내보내기",
     "paywallHeadline": "전체 기록 잠금 해제"
   },
   "exercise": {

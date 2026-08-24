@@ -290,6 +290,11 @@
     "detailEmpty": "Aucune donnée pour cette période.",
     "detailMoreInExport_one": "+{{count}} jour de plus dans le rapport exporté",
     "detailMoreInExport_other": "+{{count}} jours de plus dans le rapport exporté",
+    "rangeFrom": "Du",
+    "rangeTo": "Au",
+    "rangeExportWarningTitle": "Export d'une période",
+    "rangeExportWarningBody": "Tu as sélectionné la période du {{from}} au {{to}} - cet export ne contiendra que cette période, pas tout ton historique. Réinitialise la période si tu veux tout exporter.",
+    "rangeExportConfirm": "Exporter la période",
     "paywallHeadline": "Débloque ton historique complet"
   },
   "exercise": {

@@ -3,6 +3,12 @@ export interface ChartPoint {
   value: number
 }
 
+// Matches the 'YYYY-MM-DD' keys DayReport.date/food_logs.logged_at use
+// throughout the app, so a picked Date can be compared/filtered directly.
+export function dateKey(d: Date): string {
+  return d.toISOString().split('T')[0]
+}
+
 // Downsamples a long time series into at most maxPoints buckets by averaging
 // active (non-zero) values, so a multi-year "all time" range stays readable
 // as a chart instead of rendering thousands of hairline bars.
