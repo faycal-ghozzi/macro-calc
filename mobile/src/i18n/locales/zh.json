@@ -12,7 +12,7 @@
     "all": "全部",
     "found": "找到：",
     "restartRequiredTitle": "需要重启",
-    "restartRequiredBody": "请关闭并重新打开 MacroTrack 以应用新的布局方向。",
+    "restartRequiredBody": "请关闭并重新打开 FLOW 以应用新的布局方向。",
     "comingSoonTitle": "敬请期待",
     "comingSoonBody": "订阅功能尚未上线，敬请期待！",
     "notFoundTitle": "未找到",
@@ -58,7 +58,7 @@
     "fiber": "膳食纤维"
   },
   "auth": {
-    "appName": "MacroTrack",
+    "appName": "FLOW",
     "tagline": "记录营养，达成目标",
     "signIn": "登录",
     "signUp": "注册",
@@ -96,7 +96,8 @@
     "addFood": "添加食物",
     "yesterday": "昨天",
     "logWeight": "记录体重",
-    "water": "饮水"
+    "water": "饮水",
+    "waterErrorTitle": "记录饮水失败"
   },
   "log": {
     "title": "今日日志",
@@ -113,7 +114,7 @@
     "shareTitle": "分享每日日志",
     "shareHint": "请对方在日志页面点击“扫描”",
     "scanTitle": "扫描每日日志二维码",
-    "scanHint": "将摄像头对准 MacroTrack 每日日志二维码",
+    "scanHint": "将摄像头对准 FLOW 每日日志二维码",
     "importTitle": "导入日志",
     "importFrom": "来自 {{date}}",
     "willBeAddedToToday": "将添加至今天",
@@ -138,9 +139,9 @@
     "emptySubtitle": "点击“新建”创建第一个餐食",
     "today": "今天",
     "shareTitle": "分享餐食",
-    "shareHint": "请朋友用 MacroTrack 扫描此码",
+    "shareHint": "请朋友用 FLOW 扫描此码",
     "scanTitle": "扫描餐食二维码",
-    "scanHint": "将摄像头对准 MacroTrack 餐食二维码",
+    "scanHint": "将摄像头对准 FLOW 餐食二维码",
     "importTitle": "导入餐食",
     "importNamePlaceholder": "餐食名称（可重命名或保持不变）",
     "saveToMyMeals": "保存到我的餐食",
@@ -192,7 +193,7 @@
     "dinnerTime": "晚餐",
     "reminderTime": "提醒时间",
     "notifPermissionDeniedTitle": "通知已关闭",
-    "notifPermissionDeniedBody": "请在设置中开启 MacroTrack 的通知，以接收用餐提醒。",
+    "notifPermissionDeniedBody": "请在设置中开启 FLOW 的通知，以接收用餐提醒。",
     "openSettings": "打开设置",
     "goalLoseWeightLabel": "减重",
     "goalLoseWeightDescription": "-500千卡缺口",
@@ -212,12 +213,30 @@
     "activityVeryActiveDescription": "每天高强度训练",
     "compedAccount": "赠送账户，已解锁全部功能",
     "addOnsActive_other": "{{count}} 项增值服务已激活",
+    "sectionAddOns": "附加功能",
+    "addOnActive": "已激活",
+    "activateConfirmTitle": "激活{{name}}?",
+    "activateConfirmBody": "{{price}} - 立即生效。",
+    "activate": "激活",
+    "deactivateConfirmTitle": "停用{{name}}?",
+    "deactivateConfirmBody": "你将立即失去此功能的访问权限。",
+    "deactivate": "停用",
+    "upsellTitle": "不如考虑套餐组合",
+    "upsellBody": "加上这个附加功能后,你付出的费用将接近解锁全部功能的{{name}}套餐价格。",
+    "seeProBundle": "查看{{name}}",
+    "activateAnyway": "仍然激活",
     "freePlan": "免费版",
     "upgradeTo": "升级到 {{name}}",
     "reviewActiveItems": "查看已激活项目",
     "paywallSubscriptionHeadline": "解锁全部功能",
     "currentEmail": "当前：{{email}}",
-    "confirmationSentToNewEmail": "确认邮件已发送至新邮箱地址。",
+    "confirmationSentToNewEmail": "请在当前邮箱和新邮箱中分别确认此更改。",
+    "verificationCodeSent": "我们已将验证码发送到你的邮箱。",
+    "verificationCodeInvalid": "验证码不正确或已过期。",
+    "enterVerificationCode": "请输入发送到 {{email}} 的6位验证码。",
+    "verificationCodePlaceholder": "6位验证码",
+    "confirmCode": "确认验证码",
+    "resendCode": "重新发送验证码",
     "passwordsMismatch": "两次密码不一致。",
     "passwordTooShort": "密码必须至少为8个字符。",
     "currentPasswordIncorrect": "当前密码不正确。",
@@ -443,7 +462,7 @@
     "advancedReportsDescription": "月度/趋势进度视图，支持导出CSV/PDF",
     "allThemesName": "全部主题",
     "allThemesDescription": "日光、大地和电压主题",
-    "proBundleName": "MacroTrack Pro",
+    "proBundleName": "FLOW Pro",
     "proBundleDescription": "解锁全部功能"
   },
   "themes": {
@@ -476,5 +495,9 @@
   },
   "settings": {
     "title": "设置"
+  },
+  "offline": {
+    "title": "无网络连接",
+    "body": "FLOW 需要联网才能使用。重新连接后应用会自动恢复。"
   }
 }

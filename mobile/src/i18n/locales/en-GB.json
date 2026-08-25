@@ -13,7 +13,7 @@
     "all": "All",
     "found": "Found:",
     "restartRequiredTitle": "Restart required",
-    "restartRequiredBody": "Please close and reopen MacroTrack to apply the new layout direction.",
+    "restartRequiredBody": "Please close and reopen FLOW to apply the new layout direction.",
     "comingSoonTitle": "Coming soon",
     "comingSoonBody": "Subscriptions aren't live yet - check back soon!",
     "notFoundTitle": "Not found",
@@ -58,7 +58,7 @@
     "fiber": "Fiber"
   },
   "auth": {
-    "appName": "MacroTrack",
+    "appName": "FLOW",
     "tagline": "Track your nutrition, reach your goals",
     "signIn": "Sign In",
     "signUp": "Sign Up",
@@ -97,7 +97,8 @@
     "addFood": "Add Food",
     "yesterday": "Yesterday",
     "logWeight": "Log Weight",
-    "water": "Water"
+    "water": "Water",
+    "waterErrorTitle": "Couldn't log water"
   },
   "log": {
     "title": "Today's Log",
@@ -114,7 +115,7 @@
     "shareTitle": "Share Daily Log",
     "shareHint": "Ask them to tap Scan on their Log tab",
     "scanTitle": "Scan Daily Log QR",
-    "scanHint": "Point camera at a MacroTrack daily log QR code",
+    "scanHint": "Point camera at a FLOW daily log QR code",
     "importTitle": "Import Log",
     "importFrom": "From {{date}}",
     "willBeAddedToToday": "Will be added to today",
@@ -139,9 +140,9 @@
     "emptySubtitle": "Tap New to create your first meal",
     "today": "Today",
     "shareTitle": "Share Meal",
-    "shareHint": "Ask your friend to scan this with MacroTrack",
+    "shareHint": "Ask your friend to scan this with FLOW",
     "scanTitle": "Scan Meal QR",
-    "scanHint": "Point camera at a MacroTrack meal QR code",
+    "scanHint": "Point camera at a FLOW meal QR code",
     "importTitle": "Import Meal",
     "importNamePlaceholder": "Meal name (rename or keep as is)",
     "saveToMyMeals": "Save to My Meals",
@@ -193,7 +194,7 @@
     "dinnerTime": "Dinner",
     "reminderTime": "Reminder Time",
     "notifPermissionDeniedTitle": "Notifications Disabled",
-    "notifPermissionDeniedBody": "Turn on notifications for MacroTrack in Settings to get meal reminders.",
+    "notifPermissionDeniedBody": "Turn on notifications for FLOW in Settings to get meal reminders.",
     "openSettings": "Open Settings",
     "goalLoseWeightLabel": "Lose Weight",
     "goalLoseWeightDescription": "-500 kcal deficit",
@@ -214,12 +215,30 @@
     "compedAccount": "Comped account, everything unlocked",
     "addOnsActive_one": "{{count}} add-on active",
     "addOnsActive_other": "{{count}} add-ons active",
+    "sectionAddOns": "Add-ons",
+    "addOnActive": "Active",
+    "activateConfirmTitle": "Activate {{name}}?",
+    "activateConfirmBody": "{{price}} - takes effect immediately.",
+    "activate": "Activate",
+    "deactivateConfirmTitle": "Deactivate {{name}}?",
+    "deactivateConfirmBody": "You'll lose access to this feature immediately.",
+    "deactivate": "Deactivate",
+    "upsellTitle": "Consider the bundle instead",
+    "upsellBody": "With this add-on you'd be paying almost as much as the full {{name}} bundle, which unlocks everything.",
+    "seeProBundle": "See {{name}}",
+    "activateAnyway": "Activate Anyway",
     "freePlan": "Free plan",
     "upgradeTo": "Upgrade to {{name}}",
     "reviewActiveItems": "Review active items",
     "paywallSubscriptionHeadline": "Unlock everything",
     "currentEmail": "Current: {{email}}",
-    "confirmationSentToNewEmail": "Confirmation sent to new email address.",
+    "confirmationSentToNewEmail": "Check both your current and new email to confirm the change.",
+    "verificationCodeSent": "We sent a verification code to your email.",
+    "verificationCodeInvalid": "That code is incorrect or has expired.",
+    "enterVerificationCode": "Enter the 6-digit code we sent to {{email}}.",
+    "verificationCodePlaceholder": "6-digit code",
+    "confirmCode": "Confirm Code",
+    "resendCode": "Resend code",
     "passwordsMismatch": "Passwords do not match.",
     "passwordTooShort": "Password must be at least 8 characters.",
     "currentPasswordIncorrect": "Current password is incorrect.",
@@ -454,7 +473,7 @@
     "advancedReportsDescription": "Monthly/trend progress views, CSV/PDF export",
     "allThemesName": "All Themes",
     "allThemesDescription": "Daylight, Terra, and Voltage themes",
-    "proBundleName": "MacroTrack Pro",
+    "proBundleName": "FLOW Pro",
     "proBundleDescription": "Everything unlocked"
   },
   "themes": {
@@ -487,5 +506,9 @@
   },
   "settings": {
     "title": "Settings"
+  },
+  "offline": {
+    "title": "No internet connection",
+    "body": "FLOW needs an internet connection to work. Reconnect and the app will resume automatically."
   }
 }

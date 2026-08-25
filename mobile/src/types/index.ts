@@ -11,6 +11,8 @@ export interface Profile {
   protein_per_kg: number
   fat_per_kg: number
   deletion_requested_at: string | null
+  has_seen_first_login_tour: boolean
+  seen_feature_tips: Record<string, boolean>
 }
 
 export interface UserEntitlements {

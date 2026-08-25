@@ -6,14 +6,13 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTranslation } from 'react-i18next'
 import Svg, { Path } from 'react-native-svg'
-import Animated, { useSharedValue, useAnimatedStyle, useAnimatedProps, withTiming, withRepeat, withSequence, Easing } from 'react-native-reanimated'
+import Animated, { useSharedValue, useAnimatedStyle, useAnimatedProps, withTiming, Easing } from 'react-native-reanimated'
 import * as Haptics from '../lib/haptics'
 import { useTheme } from '../theme/ThemeProvider'
-import { useTour } from '../contexts/TourContext'
+import { useTour, SPOTLIGHT_PADDING, SPOTLIGHT_RADIUS_INSET } from '../contexts/TourContext'
 import type { TabParamList } from '../navigation/TabNavigator'
 import { mirrorChevron } from '../lib/rtl'
 
-const SPOTLIGHT_PADDING = 8
 const TOOLTIP_GAP = 16
 const MOVE_DURATION = 320
 
@@ -21,7 +20,9 @@ const AnimatedPath = Animated.createAnimatedComponent(Path)
 
 // Traces a rounded rect as its own closed subpath - combined with the full-
 // screen rect via evenodd fill rule, this cuts a rounded (not square-cornered)
-// hole out of the dim overlay.
+// hole out of the dim overlay. The target itself lights up via TourGlow
+// (rendered on the target, see TourContext) - this overlay only handles the
+// dimming and the tooltip.
 function roundedRectPath(x: number, y: number, w: number, h: number, r: number) {
   'worklet'
   const rr = Math.max(0, Math.min(r, w / 2, h / 2))
@@ -33,7 +34,7 @@ export function TourOverlay() {
   const { t } = useTranslation()
   const { activeStep, next, skip, getTargetRect } = useTour()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
-  const spotlightRadius = theme.style.cardRadius - 6
+  const spotlightRadius = theme.style.cardRadius - SPOTLIGHT_RADIUS_INSET
   const insets = useSafeAreaInsets()
   const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>()
   const lastNavigatedTo = useRef<string | null>(null)
@@ -53,23 +54,34 @@ export function TourOverlay() {
   // the navigation above finishes.
   const liveRect = activeStep ? getTargetRect(activeStep.id) : null
 
+  // Toolbar steps (tab_*) point at a tab bar button - instead of dimming the
+  // whole screen but a hole around just that one button (leaving its
+  // neighbors dimmed), keep the entire tab bar lit and let the target
+  // button's own TourPointerBeacon (see TabNavigator) serve as the pointer.
+  const isToolbarStep = !!activeStep?.id.startsWith('tab_')
+  const tabBarRect = isToolbarStep ? getTargetRect('tabbar') : undefined
+
   const boxX = useSharedValue(0)
   const boxY = useSharedValue(0)
   const boxW = useSharedValue(0)
   const boxH = useSharedValue(0)
   const hasPositioned = useRef(false)
+  const lastStepId = useRef<string | null>(null)
   const tooltipAnim = useSharedValue(0)
-  const pulse = useSharedValue(0)
-
-  useEffect(() => {
-    pulse.value = withRepeat(withSequence(withTiming(1, { duration: 1000 }), withTiming(0, { duration: 1000 })), -1, true)
-  }, [pulse])
 
   // The overlay stays mounted (just renders null) between tours, so its
   // shared values persist - without this, a fresh tour would animate in
-  // from wherever the box was left at the end of the previous one.
+  // from wherever the cutout was left at the end of the previous one. Reset
+  // on every step change too (not just tour end/start): a step's target is
+  // often in a completely different spot on screen (e.g. a different tab
+  // button), and sliding the cutout there reads as it "flying" across
+  // unrelated UI - snapping straight to the new spot looks intentional.
   useEffect(() => {
-    if (!activeStep) hasPositioned.current = false
+    if (!activeStep) { hasPositioned.current = false; lastStepId.current = null; return }
+    if (activeStep.id !== lastStepId.current) {
+      hasPositioned.current = false
+      lastStepId.current = activeStep.id
+    }
   }, [activeStep])
 
   useEffect(() => {
@@ -80,14 +92,16 @@ export function TourOverlay() {
     const h = liveRect.height + SPOTLIGHT_PADDING * 2
 
     if (!hasPositioned.current) {
-      // Snap on first appearance for this mount - animating in from (0,0)
-      // would flash a shrunken box in the corner before growing.
+      // Snap on first appearance (mount, or a new step) - animating in from
+      // (0,0), or sliding from the previous step's target, both look wrong.
       boxX.value = x
       boxY.value = y
       boxW.value = w
       boxH.value = h
       hasPositioned.current = true
     } else {
+      // Same step, target just moved/resized slightly (e.g. a late safe-area
+      // correction) - a quick slide reads as a settle-in, not a flight.
       boxX.value = withTiming(x, { duration: MOVE_DURATION, easing: Easing.out(Easing.cubic) })
       boxY.value = withTiming(y, { duration: MOVE_DURATION, easing: Easing.out(Easing.cubic) })
       boxW.value = withTiming(w, { duration: MOVE_DURATION, easing: Easing.out(Easing.cubic) })
@@ -103,16 +117,14 @@ export function TourOverlay() {
   }, [activeStep?.id])
 
   const maskProps = useAnimatedProps(() => {
+    if (isToolbarStep && tabBarRect) {
+      // Dim only down to the top of the tab bar - the bar itself (and every
+      // button in it) stays fully lit, not just a hole around the target.
+      return { d: `M0,0H${screenWidth}V${tabBarRect.y}H0Z` }
+    }
     const hole = roundedRectPath(boxX.value, boxY.value, boxW.value, boxH.value, spotlightRadius)
     return { d: `M0,0H${screenWidth}V${screenHeight}H0Z ${hole}` }
   })
-  const spotlightStyle = useAnimatedStyle(() => ({
-    top: boxY.value,
-    left: boxX.value,
-    width: boxW.value,
-    height: boxH.value,
-    opacity: 0.7 + pulse.value * 0.3,
-  }))
   const tooltipAnimStyle = useAnimatedStyle(() => ({
     opacity: tooltipAnim.value,
     transform: [{ scale: 0.95 + tooltipAnim.value * 0.05 }, { translateY: (1 - tooltipAnim.value) * 10 }],
@@ -131,20 +143,11 @@ export function TourOverlay() {
   return (
     <Modal visible transparent statusBarTranslucent animationType="fade" onRequestClose={skip}>
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        {/* Dimmed scrim with a rounded hole cut out via evenodd fill - matches
-            the spotlight border's radius instead of leaving square corners. */}
+        {/* Dimmed scrim with a rounded hole cut out via evenodd fill - the
+            target itself lights up via TourGlow, not this overlay. */}
         <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
           <AnimatedPath animatedProps={maskProps} fill={theme.colors.overlay} fillRule="evenodd" />
         </Svg>
-
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.spotlightBorder,
-            spotlightStyle,
-            { borderColor: theme.colors.accent, borderRadius: spotlightRadius },
-          ]}
-        />
 
         <Animated.View
           style={[
@@ -193,7 +196,6 @@ export function TourOverlay() {
 }
 
 const styles = StyleSheet.create({
-  spotlightBorder: { position: 'absolute', borderWidth: 2 },
   tooltip: { position: 'absolute', padding: 18 },
   stepCount: { fontSize: 11, fontWeight: '700', marginBottom: 6 },
   title: { fontSize: 16, fontWeight: '700', marginBottom: 6 },

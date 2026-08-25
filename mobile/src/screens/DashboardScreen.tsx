@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
@@ -20,8 +20,7 @@ import { useExerciseLog } from '../hooks/useExerciseLog'
 import { useWaterLog } from '../hooks/useWaterLog'
 import { useProfile } from '../hooks/useProfile'
 import { useUnitsStore } from '../store/useUnitsStore'
-import { useTour, TourTarget } from '../contexts/TourContext'
-import { useTourProgressStore } from '../store/useTourProgressStore'
+import { useTour, TourTarget, EMPTY_SEEN_TIPS } from '../contexts/TourContext'
 import { calculateMacroTargets } from '../lib/macroCalc'
 import { mirrorChevron, rtlFlipStyle } from '../lib/rtl'
 import { waterUnitLabel, mlToDisplayValue, displayValueToMl, massUnitLabel, gToDisplayValue } from '../lib/units'
@@ -62,7 +61,7 @@ export default function DashboardScreen() {
   const targets = profile ? calculateMacroTargets(profile) : null
   const isToday = formatDate(date) === formatDate(new Date())
   const { showTip } = useTour()
-  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
+  const seenFeatureTips = profile?.seen_feature_tips ?? EMPTY_SEEN_TIPS
   const [showWeightModal, setShowWeightModal] = useState(false)
   const [addingWater, setAddingWater] = useState(false)
 
@@ -96,14 +95,16 @@ export default function DashboardScreen() {
   async function handleQuickAddWater(displayAmount: number) {
     Haptics.selectionAsync()
     setAddingWater(true)
-    await addWaterLog(displayValueToMl(displayAmount, system))
+    const { error } = await addWaterLog(displayValueToMl(displayAmount, system))
     setAddingWater(false)
+    if (error) Alert.alert(t('dashboard.waterErrorTitle'), error.message)
   }
 
   async function handleUndoWater() {
     if (waterLogs.length === 0) return
     Haptics.selectionAsync()
-    await deleteWaterLog(waterLogs[waterLogs.length - 1].id)
+    const { error } = await deleteWaterLog(waterLogs[waterLogs.length - 1].id)
+    if (error) Alert.alert(t('dashboard.waterErrorTitle'), error.message)
   }
 
   const netCalories = totals.calories - totalBurned

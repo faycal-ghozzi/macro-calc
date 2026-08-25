@@ -21,8 +21,8 @@ import { useFoodLog } from '../hooks/useFoodLog'
 import { useExerciseLog } from '../hooks/useExerciseLog'
 import { useMeals } from '../hooks/useMeals'
 import { useEntitlements } from '../hooks/useEntitlements'
-import { useTour, TourTarget } from '../contexts/TourContext'
-import { useTourProgressStore } from '../store/useTourProgressStore'
+import { useTour, TourTarget, EMPTY_SEEN_TIPS } from '../contexts/TourContext'
+import { useProfile } from '../hooks/useProfile'
 import { calcMacrosFromAmount, calcMealTotals, roundTo2 } from '../lib/macroCalc'
 import { useUnitsStore } from '../store/useUnitsStore'
 import { formatMass, gToDisplayValue } from '../lib/units'
@@ -54,7 +54,8 @@ export default function FoodLogScreen() {
   const { checkAndIncrementQrShare, checkAndIncrementQrReceive } = useEntitlements()
   const [paywallProduct, setPaywallProduct] = useState<'qr_sharing_unlimited' | null>(null)
   const { showTip } = useTour()
-  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
+  const { profile } = useProfile()
+  const seenFeatureTips = profile?.seen_feature_tips ?? EMPTY_SEEN_TIPS
 
   const logShareTipAttempted = useRef(false)
   useEffect(() => {
@@ -88,6 +89,11 @@ export default function FoodLogScreen() {
       navigation.setParams({ meal: undefined })
     }
   }, [route.params?.meal, navigation])
+
+  function handleSettingsPress() {
+    Haptics.selectionAsync()
+    navigation.navigate('Profile', { screen: 'Settings' })
+  }
 
   function handleAddClick(meal: MealType) {
     Haptics.selectionAsync()
@@ -180,9 +186,14 @@ export default function FoodLogScreen() {
   return (
     <Screen contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8 }}>
       <View style={styles.topRow}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-          {dateStr === todayStr ? '' : dateStr}
-        </Text>
+        <View style={styles.titleGroup}>
+          <Pressable onPress={handleSettingsPress} style={[styles.settingsBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
+            <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
+          </Pressable>
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+            {dateStr === todayStr ? '' : dateStr}
+          </Text>
+        </View>
         <View style={styles.headerActions}>
           <TourTarget id="tip_log_scan">
             <Pressable onPress={() => setShowScanner(true)} style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
@@ -452,6 +463,8 @@ export default function FoodLogScreen() {
 
 const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  titleGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  settingsBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 19, fontWeight: '700' },
   headerActions: { flexDirection: 'row', gap: 8 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12 },

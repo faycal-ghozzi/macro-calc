@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, R
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveEntitlements, type FeatureFlags } from '../lib/entitlements'
+import { purchaseProduct, deactivateProduct as deactivateProductRpc } from '../lib/purchases'
+import type { ProductId } from '../lib/products'
 import type { UserEntitlements } from '../types'
 
 interface EntitlementsContextType {
@@ -13,6 +15,9 @@ interface EntitlementsContextType {
   checkAndIncrementFavoriteCreated: () => Promise<boolean>
   checkAndIncrementQrShare: () => Promise<boolean>
   checkAndIncrementQrReceive: () => Promise<boolean>
+  checkAndIncrementReportExported: () => Promise<boolean>
+  activateProduct: (productId: ProductId) => Promise<boolean>
+  deactivateProduct: (productId: ProductId) => Promise<boolean>
 }
 
 const EntitlementsContext = createContext<EntitlementsContextType>({
@@ -24,6 +29,9 @@ const EntitlementsContext = createContext<EntitlementsContextType>({
   checkAndIncrementFavoriteCreated: async () => false,
   checkAndIncrementQrShare: async () => false,
   checkAndIncrementQrReceive: async () => false,
+  checkAndIncrementReportExported: async () => false,
+  activateProduct: async () => false,
+  deactivateProduct: async () => false,
 })
 
 // Fetched once here and shared via context, rather than every screen/modal
@@ -80,6 +88,24 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
     return !!data
   }, [fetchRow])
 
+  const checkAndIncrementReportExported = useCallback(async (): Promise<boolean> => {
+    const { data } = await supabase.rpc('check_and_increment_report_exported')
+    await fetchRow()
+    return !!data
+  }, [fetchRow])
+
+  const activateProduct = useCallback(async (productId: ProductId): Promise<boolean> => {
+    const ok = await purchaseProduct(productId)
+    await fetchRow()
+    return ok
+  }, [fetchRow])
+
+  const deactivateProduct = useCallback(async (productId: ProductId): Promise<boolean> => {
+    const ok = await deactivateProductRpc(productId)
+    await fetchRow()
+    return ok
+  }, [fetchRow])
+
   const value = useMemo(
     () => ({
       row,
@@ -90,8 +116,15 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
       checkAndIncrementFavoriteCreated,
       checkAndIncrementQrShare,
       checkAndIncrementQrReceive,
+      checkAndIncrementReportExported,
+      activateProduct,
+      deactivateProduct,
     }),
-    [row, flags, loading, fetchRow, checkAndIncrementMealCreated, checkAndIncrementFavoriteCreated, checkAndIncrementQrShare, checkAndIncrementQrReceive]
+    [
+      row, flags, loading, fetchRow,
+      checkAndIncrementMealCreated, checkAndIncrementFavoriteCreated, checkAndIncrementQrShare, checkAndIncrementQrReceive,
+      checkAndIncrementReportExported, activateProduct, deactivateProduct,
+    ]
   )
 
   return <EntitlementsContext.Provider value={value}>{children}</EntitlementsContext.Provider>

@@ -53,10 +53,24 @@ export function activeIndividualCount(activeProductIds: ProductId[]): number {
   return INDIVIDUAL_PRODUCT_IDS.filter((id) => activeProductIds.includes(id)).length
 }
 
-export function bundleSavings(activeProductIds: ProductId[], billing: 'monthly' | 'annual'): number {
-  const combined = INDIVIDUAL_PRODUCT_IDS
-    .filter((id) => activeProductIds.includes(id))
+function combinedIndividualPrice(productIds: ProductId[], billing: 'monthly' | 'annual'): number {
+  return INDIVIDUAL_PRODUCT_IDS
+    .filter((id) => productIds.includes(id))
     .reduce((sum, id) => sum + (billing === 'monthly' ? PRODUCTS[id].monthlyPrice : PRODUCTS[id].annualPrice), 0)
+}
+
+export function bundleSavings(activeProductIds: ProductId[], billing: 'monthly' | 'annual'): number {
   const bundlePrice = billing === 'monthly' ? PRODUCTS.pro_bundle.monthlyPrice : PRODUCTS.pro_bundle.annualPrice
-  return Math.max(0, combined - bundlePrice)
+  return Math.max(0, combinedIndividualPrice(activeProductIds, billing) - bundlePrice)
+}
+
+// Used to nudge someone activating a new individual add-on toward the Pro
+// bundle instead, when doing so would bring their combined individual spend
+// close to (or over) what the bundle costs outright.
+const BUNDLE_UPSELL_THRESHOLD = 0.8
+
+export function wouldApproachBundle(activeProductIds: ProductId[], addingProductId: ProductId, billing: 'monthly' | 'annual' = 'monthly'): boolean {
+  const bundlePrice = billing === 'monthly' ? PRODUCTS.pro_bundle.monthlyPrice : PRODUCTS.pro_bundle.annualPrice
+  const hypothetical = combinedIndividualPrice([...activeProductIds, addingProductId], billing)
+  return hypothetical >= bundlePrice * BUNDLE_UPSELL_THRESHOLD
 }

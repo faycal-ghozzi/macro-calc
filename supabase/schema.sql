@@ -1,4 +1,4 @@
--- MacroTrack Schema
+-- FLOW Schema
 -- Run this in your Supabase SQL editor
 
 -- Profiles

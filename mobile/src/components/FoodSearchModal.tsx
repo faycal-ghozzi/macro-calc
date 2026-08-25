@@ -13,8 +13,8 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useFavorites } from '../hooks/useFavorites'
 import { useMeals } from '../hooks/useMeals'
 import { useEntitlements } from '../hooks/useEntitlements'
-import { useTour, TourTarget } from '../contexts/TourContext'
-import { useTourProgressStore } from '../store/useTourProgressStore'
+import { useTour, TourTarget, EMPTY_SEEN_TIPS } from '../contexts/TourContext'
+import { useProfile } from '../hooks/useProfile'
 import { searchCommonFoods, FOOD_CATEGORIES, categoryLabelKey } from '../lib/commonFoods'
 import { fetchProductByBarcode, searchProducts } from '../lib/openfoodfacts'
 import { calcMealTotals } from '../lib/macroCalc'
@@ -138,7 +138,8 @@ export function FoodSearchModal({ visible, onSelect, onClose, onSelectMeal }: Fo
   const { checkAndIncrementFavoriteCreated } = useEntitlements()
   const [favoritePaywall, setFavoritePaywall] = useState(false)
   const { showTip } = useTour()
-  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
+  const { profile } = useProfile()
+  const seenFeatureTips = profile?.seen_feature_tips ?? EMPTY_SEEN_TIPS
 
   const [activeTab, setActiveTab] = useState<Tab>('favorites')
   const [favoriteQuery, setFavoriteQuery] = useState('')

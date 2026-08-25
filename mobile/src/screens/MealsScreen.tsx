@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
+import { useNavigation } from '@react-navigation/native'
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
 import { EmptyState } from '../components/EmptyState'
@@ -18,13 +20,14 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useMeals } from '../hooks/useMeals'
 import { useFoodLog } from '../hooks/useFoodLog'
 import { useEntitlements } from '../hooks/useEntitlements'
-import { useTour, TourTarget } from '../contexts/TourContext'
-import { useTourProgressStore } from '../store/useTourProgressStore'
+import { useTour, TourTarget, EMPTY_SEEN_TIPS } from '../contexts/TourContext'
+import { useProfile } from '../hooks/useProfile'
 import type { ProductId } from '../lib/products'
 import { calcMacrosFromAmount, calcMealTotals, roundTo2 } from '../lib/macroCalc'
 import { useUnitsStore } from '../store/useUnitsStore'
 import { formatMass } from '../lib/units'
 import { encodeMealToQR, decodeMealFromQR, mealQRToIngredients, MealQRData } from '../lib/mealQR'
+import type { TabParamList } from '../navigation/TabNavigator'
 import type { FoodItem, Meal, MealIngredient } from '../types'
 import type { CodeFormat } from 'react-native-camera-kit'
 
@@ -38,6 +41,7 @@ const QR_TYPES: CodeFormat[] = ['qr']
 export default function MealsScreen() {
   const theme = useTheme()
   const { t } = useTranslation()
+  const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>()
   const { system } = useUnitsStore()
   const { meals, loading, fetchError, createMeal, updateMeal, deleteMeal, touchMealUsed, refetch } = useMeals()
   const todayStr = new Date().toISOString().split('T')[0]
@@ -45,7 +49,8 @@ export default function MealsScreen() {
   const { checkAndIncrementMealCreated, checkAndIncrementQrShare, checkAndIncrementQrReceive } = useEntitlements()
   const [paywallProduct, setPaywallProduct] = useState<ProductId | null>(null)
   const { showTip } = useTour()
-  const seenFeatureTips = useTourProgressStore((s) => s.seenFeatureTips)
+  const { profile } = useProfile()
+  const seenFeatureTips = profile?.seen_feature_tips ?? EMPTY_SEEN_TIPS
 
   const mealScanTipAttempted = useRef(false)
   useEffect(() => {
@@ -78,6 +83,11 @@ export default function MealsScreen() {
   const [importingMeal, setImportingMeal] = useState<MealQRData | null>(null)
   const [importName, setImportName] = useState('')
   const [importSaving, setImportSaving] = useState(false)
+
+  function handleSettingsPress() {
+    Haptics.selectionAsync()
+    navigation.navigate('Profile', { screen: 'Settings' })
+  }
 
   function openSearch(mode: SearchMode) {
     setSearchMode(mode)
@@ -230,6 +240,9 @@ export default function MealsScreen() {
   return (
     <Screen contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8 }}>
       <View style={styles.topRow}>
+        <Pressable onPress={handleSettingsPress} style={[styles.iconBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
+          <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
+        </Pressable>
         {!creatingMeal && (
           <View style={styles.headerActions}>
             <TourTarget id="tip_meal_scan">
@@ -545,7 +558,8 @@ export default function MealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  topRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 14 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   headerActions: { flexDirection: 'row', gap: 8 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12 },
   panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

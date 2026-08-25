@@ -216,7 +216,7 @@ export async function exportNutritionReport(opts: {
     </table>
   `
 
-  await exportHtmlAsPdf(htmlDocument('MacroTrack', dir, body), `macrotrack-progress-${new Date().toISOString().split('T')[0]}`)
+  await exportHtmlAsPdf(htmlDocument('FLOW', dir, body), `flow-progress-${new Date().toISOString().split('T')[0]}`)
 }
 
 export async function exportWeightReport(opts: {
@@ -271,5 +271,5 @@ export async function exportWeightReport(opts: {
     </table>
   `
 
-  await exportHtmlAsPdf(htmlDocument('MacroTrack', dir, body), `macrotrack-weight-${new Date().toISOString().split('T')[0]}`)
+  await exportHtmlAsPdf(htmlDocument('FLOW', dir, body), `flow-weight-${new Date().toISOString().split('T')[0]}`)
 }

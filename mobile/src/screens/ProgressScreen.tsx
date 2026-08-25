@@ -4,6 +4,8 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTranslation } from 'react-i18next'
 import * as Haptics from '../lib/haptics'
+import { useNavigation } from '@react-navigation/native'
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
 import { EmptyState } from '../components/EmptyState'
@@ -25,6 +27,7 @@ import { calculateMacroTargets } from '../lib/macroCalc'
 import { weightUnitLabel, kgToDisplayValue, displayValueToKg, weightBounds, formatWeightDelta, formatMass, gToDisplayValue, massUnitLabel } from '../lib/units'
 import { exportNutritionReport, exportWeightReport } from '../lib/pdfReport'
 import { ChartPoint, dateKey } from '../lib/chartUtils'
+import type { TabParamList } from '../navigation/TabNavigator'
 
 type Tab = 'days' | 'allTime' | 'weight'
 
@@ -42,6 +45,7 @@ const FREE_MAX_DAYS = 7
 export default function ProgressScreen() {
   const theme = useTheme()
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>()
   const { system } = useUnitsStore()
   const weightUnit = weightUnitLabel(system)
   const [tab, setTab] = useState<Tab>('days')
@@ -51,7 +55,7 @@ export default function ProgressScreen() {
   const { entries, loading: wLoading, addEntry, deleteEntry, latestEntry, totalChange } = useWeightLog()
   const { getDays, getRange, allTime, loading: rLoading } = useReports()
   const { profile } = useProfile()
-  const { flags } = useEntitlements()
+  const { flags, checkAndIncrementReportExported } = useEntitlements()
   const [showReportsPaywall, setShowReportsPaywall] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [detail, setDetail] = useState<DetailConfig | null>(null)
@@ -63,6 +67,11 @@ export default function ProgressScreen() {
   const [weightNotes, setWeightNotes] = useState('')
   const [savingWeight, setSavingWeight] = useState(false)
   const [showWeightForm, setShowWeightForm] = useState(false)
+
+  function handleSettingsPress() {
+    Haptics.selectionAsync()
+    navigation.navigate('Profile', { screen: 'Settings' })
+  }
 
   async function handleAddWeight() {
     const value = Number.parseFloat(weight)
@@ -120,9 +129,20 @@ export default function ProgressScreen() {
   }
 
   async function runExport() {
+    if (exporting) return
     Haptics.selectionAsync()
     setExporting(true)
     try {
+      // Server-enforced free-tier gate (supabase/report_export_limit.sql) -
+      // checked and consumed atomically before generating anything, so a
+      // free-tier user only ever gets their one lifetime export.
+      if (!flags.hasMonthlyReports) {
+        const allowed = await checkAndIncrementReportExported()
+        if (!allowed) {
+          setShowReportsPaywall(true)
+          return
+        }
+      }
       if (tab === 'weight') {
         await exportWeightReport({ t, language: i18n.language, system, entries, accentColor: theme.colors.accent })
       } else if (report) {
@@ -163,24 +183,29 @@ export default function ProgressScreen() {
   return (
     <Screen contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8 }}>
       <View style={styles.topRow}>
-        <Pressable
-          onPress={handleExport}
-          disabled={exporting}
-          style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated, opacity: exporting ? 0.6 : 1 }]}
-        >
-          {exporting ? (
-            <ActivityIndicator size="small" color={theme.colors.textSecondary} />
-          ) : (
-            <Ionicons name="share-outline" size={14} color={theme.colors.textSecondary} />
-          )}
-          <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>{t('progress.export')}</Text>
+        <Pressable onPress={handleSettingsPress} style={[styles.iconBtn, { backgroundColor: theme.colors.backgroundElevated }]}>
+          <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
         </Pressable>
-        {tab === 'weight' && (
-          <Pressable onPress={() => { Haptics.selectionAsync(); setShowWeightForm((v) => !v) }} style={[styles.headerBtn, { backgroundColor: theme.colors.accentSoft }]}>
-            <Ionicons name="add" size={14} color={theme.colors.accent} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>{t('progress.log')}</Text>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={handleExport}
+            disabled={exporting}
+            style={[styles.headerBtn, { backgroundColor: theme.colors.backgroundElevated, opacity: exporting ? 0.6 : 1 }]}
+          >
+            {exporting ? (
+              <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+            ) : (
+              <Ionicons name="share-outline" size={14} color={theme.colors.textSecondary} />
+            )}
+            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary }}>{t('progress.export')}</Text>
           </Pressable>
-        )}
+          {tab === 'weight' && (
+            <Pressable onPress={() => { Haptics.selectionAsync(); setShowWeightForm((v) => !v) }} style={[styles.headerBtn, { backgroundColor: theme.colors.accentSoft }]}>
+              <Ionicons name="add" size={14} color={theme.colors.accent} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>{t('progress.log')}</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <View style={[styles.tabBar, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 6 }]}>
@@ -537,7 +562,9 @@ export default function ProgressScreen() {
 }
 
 const styles = StyleSheet.create({
-  topRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 14 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12 },
   tabBar: { flexDirection: 'row', padding: 4, gap: 4, marginBottom: 16 },
   dayRangeRow: { flexDirection: 'row', marginBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth },

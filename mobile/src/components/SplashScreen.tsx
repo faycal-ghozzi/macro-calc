@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { View, Pressable, StyleSheet } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import Animated, {
   useAnimatedProps,
@@ -73,7 +73,7 @@ function SplashRing({ size, strokeWidth, color, target, delay }: { size: number;
   )
 }
 
-export function SplashScreen() {
+export function SplashScreen({ onPress }: { onPress?: () => void }) {
   const theme = useTheme()
   const { t } = useTranslation()
   const wordmarkOpacity = useSharedValue(0)
@@ -112,7 +112,7 @@ export function SplashScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
+    <Pressable style={[styles.root, { backgroundColor: theme.colors.background }]} onPress={onPress} disabled={!onPress}>
       <Animated.View style={[styles.ringWrap, breatheStyle]}>
         {RINGS.map((ring) => (
           <View
@@ -126,7 +126,7 @@ export function SplashScreen() {
       <Animated.Text style={[styles.wordmark, { color: theme.colors.textPrimary }, wordmarkStyle]}>
         {t('auth.appName')}
       </Animated.Text>
-    </View>
+    </Pressable>
   )
 }
 

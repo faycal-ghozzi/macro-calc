@@ -87,7 +87,27 @@ export default function ProfileScreen() {
 
   async function handleSave() {
     setSaving(true)
-    await updateProfile(form)
+    // Only the fields this screen actually edits - form is seeded from the
+    // full profile (see the sync effect above) so it also carries fields
+    // this screen has no business touching (has_seen_first_login_tour,
+    // seen_feature_tips, deletion_requested_at). Sending the whole blob
+    // back would silently clobber those with whatever stale snapshot this
+    // screen happened to capture at mount - e.g. resetting the tour flag
+    // to false if this screen mounted before the tour's own completion
+    // write landed (it always does, right after the tour's last step,
+    // which drops the user here).
+    await updateProfile({
+      name: form.name,
+      height_cm: form.height_cm,
+      birth_year: form.birth_year,
+      gender: form.gender,
+      goal: form.goal,
+      activity_level: form.activity_level,
+      current_weight_kg: form.current_weight_kg,
+      water_goal_ml: form.water_goal_ml,
+      protein_per_kg: form.protein_per_kg,
+      fat_per_kg: form.fat_per_kg,
+    })
     setSaving(false)
     setSaved(true)
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -111,7 +131,7 @@ export default function ProfileScreen() {
           onPress={() => navigation.navigate('Settings')}
           style={[styles.settingsBtn, { backgroundColor: theme.colors.backgroundElevated }]}
         >
-          <Ionicons name="settings-outline" size={19} color={theme.colors.textSecondary} />
+          <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
         </Pressable>
       </View>
 
@@ -354,7 +374,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' },
   settingsBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   sectionLabel: { fontSize: 13, fontWeight: '700' },
   fieldLabel: { fontSize: 11, fontWeight: '600' },

@@ -5,6 +5,7 @@ import { useSyncNotificationsOnLaunch } from './src/lib/notifications'
 import { AuthProvider } from './src/contexts/AuthContext'
 import { ThemeProvider } from './src/theme/ThemeProvider'
 import { ErrorBoundary } from './src/components/ErrorBoundary'
+import { ConnectivityGate } from './src/components/ConnectivityGate'
 import { RootNavigator } from './src/navigation/RootNavigator'
 import { EntitlementsProvider } from './src/hooks/useEntitlements'
 import { MealsProvider } from './src/hooks/useMeals'
@@ -26,29 +27,31 @@ export default function App() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <ThemeProvider>
-            <AuthProvider>
-              <ProfileProvider>
-                <EntitlementsProvider>
-                  <MealsProvider>
-                    <FavoritesProvider>
-                      <WeightLogProvider>
-                        <ReportsProvider>
-                          <FoodLogProvider>
-                            <ExerciseLogProvider>
-                              <WaterLogProvider>
-                                <TourProvider>
-                                  <RootNavigator />
-                                </TourProvider>
-                              </WaterLogProvider>
-                            </ExerciseLogProvider>
-                          </FoodLogProvider>
-                        </ReportsProvider>
-                      </WeightLogProvider>
-                    </FavoritesProvider>
-                  </MealsProvider>
-                </EntitlementsProvider>
-              </ProfileProvider>
-            </AuthProvider>
+            <ConnectivityGate>
+              <AuthProvider>
+                <ProfileProvider>
+                  <EntitlementsProvider>
+                    <MealsProvider>
+                      <FavoritesProvider>
+                        <WeightLogProvider>
+                          <ReportsProvider>
+                            <FoodLogProvider>
+                              <ExerciseLogProvider>
+                                <WaterLogProvider>
+                                  <TourProvider>
+                                    <RootNavigator />
+                                  </TourProvider>
+                                </WaterLogProvider>
+                              </ExerciseLogProvider>
+                            </FoodLogProvider>
+                          </ReportsProvider>
+                        </WeightLogProvider>
+                      </FavoritesProvider>
+                    </MealsProvider>
+                  </EntitlementsProvider>
+                </ProfileProvider>
+              </AuthProvider>
+            </ConnectivityGate>
           </ThemeProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

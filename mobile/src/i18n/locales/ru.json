@@ -12,7 +12,7 @@
     "all": "Все",
     "found": "Найдено:",
     "restartRequiredTitle": "Требуется перезапуск",
-    "restartRequiredBody": "Закройте и снова откройте MacroTrack, чтобы применить новое направление интерфейса.",
+    "restartRequiredBody": "Закройте и снова откройте FLOW, чтобы применить новое направление интерфейса.",
     "comingSoonTitle": "Скоро",
     "comingSoonBody": "Подписки пока недоступны — загляните позже!",
     "notFoundTitle": "Не найдено",
@@ -58,7 +58,7 @@
     "fiber": "Клетчатка"
   },
   "auth": {
-    "appName": "MacroTrack",
+    "appName": "FLOW",
     "tagline": "Следите за питанием, достигайте целей",
     "signIn": "Войти",
     "signUp": "Зарегистрироваться",
@@ -99,7 +99,8 @@
     "addFood": "Добавить продукт",
     "yesterday": "Вчера",
     "logWeight": "Записать вес",
-    "water": "Вода"
+    "water": "Вода",
+    "waterErrorTitle": "Не удалось записать воду"
   },
   "log": {
     "title": "Дневник за сегодня",
@@ -116,7 +117,7 @@
     "shareTitle": "Поделиться дневником за день",
     "shareHint": "Попросите их нажать «Сканировать» на вкладке «Дневник»",
     "scanTitle": "Сканировать QR-код дневника",
-    "scanHint": "Наведите камеру на QR-код дневника MacroTrack",
+    "scanHint": "Наведите камеру на QR-код дневника FLOW",
     "importTitle": "Импорт дневника",
     "importFrom": "За {{date}}",
     "willBeAddedToToday": "Будет добавлено сегодня",
@@ -141,9 +142,9 @@
     "emptySubtitle": "Нажмите «Новое», чтобы создать первое блюдо",
     "today": "Сегодня",
     "shareTitle": "Поделиться блюдом",
-    "shareHint": "Попросите друга отсканировать это в MacroTrack",
+    "shareHint": "Попросите друга отсканировать это в FLOW",
     "scanTitle": "Сканировать QR-код блюда",
-    "scanHint": "Наведите камеру на QR-код блюда MacroTrack",
+    "scanHint": "Наведите камеру на QR-код блюда FLOW",
     "importTitle": "Импорт блюда",
     "importNamePlaceholder": "Название блюда (переименуйте или оставьте как есть)",
     "saveToMyMeals": "Сохранить в моих блюдах",
@@ -195,7 +196,7 @@
     "dinnerTime": "Ужин",
     "reminderTime": "Время напоминания",
     "notifPermissionDeniedTitle": "Уведомления отключены",
-    "notifPermissionDeniedBody": "Включите уведомления для MacroTrack в настройках, чтобы получать напоминания о приёмах пищи.",
+    "notifPermissionDeniedBody": "Включите уведомления для FLOW в настройках, чтобы получать напоминания о приёмах пищи.",
     "openSettings": "Открыть настройки",
     "goalLoseWeightLabel": "Похудение",
     "goalLoseWeightDescription": "Дефицит -500 ккал",
@@ -218,12 +219,30 @@
     "addOnsActive_few": "{{count}} активных дополнения",
     "addOnsActive_many": "{{count}} активных дополнений",
     "addOnsActive_other": "{{count}} активных дополнения",
+    "sectionAddOns": "Дополнения",
+    "addOnActive": "Активно",
+    "activateConfirmTitle": "Активировать {{name}}?",
+    "activateConfirmBody": "{{price}} - вступит в силу немедленно.",
+    "activate": "Активировать",
+    "deactivateConfirmTitle": "Деактивировать {{name}}?",
+    "deactivateConfirmBody": "Вы сразу же потеряете доступ к этой функции.",
+    "deactivate": "Деактивировать",
+    "upsellTitle": "Рассмотрите пакет вместо этого",
+    "upsellBody": "С этим дополнением вы будете платить почти столько же, сколько за полный пакет {{name}}, который открывает всё.",
+    "seeProBundle": "Смотреть {{name}}",
+    "activateAnyway": "Всё равно активировать",
     "freePlan": "Бесплатный план",
     "upgradeTo": "Перейти на {{name}}",
     "reviewActiveItems": "Просмотреть активные элементы",
     "paywallSubscriptionHeadline": "Откройте всё",
     "currentEmail": "Текущий: {{email}}",
-    "confirmationSentToNewEmail": "Подтверждение отправлено на новый адрес электронной почты.",
+    "confirmationSentToNewEmail": "Подтвердите изменение с текущего и нового адреса электронной почты.",
+    "verificationCodeSent": "Мы отправили код подтверждения на вашу почту.",
+    "verificationCodeInvalid": "Этот код неверен или истёк.",
+    "enterVerificationCode": "Введите 6-значный код, отправленный на {{email}}.",
+    "verificationCodePlaceholder": "6-значный код",
+    "confirmCode": "Подтвердить код",
+    "resendCode": "Отправить код повторно",
     "passwordsMismatch": "Пароли не совпадают.",
     "passwordTooShort": "Пароль должен содержать не менее 8 символов.",
     "currentPasswordIncorrect": "Текущий пароль неверен.",
@@ -476,7 +495,7 @@
     "advancedReportsDescription": "Месячные отчёты и тренды, экспорт в CSV/PDF",
     "allThemesName": "Все темы",
     "allThemesDescription": "Темы Midnight, Daylight, Terra и Voltage",
-    "proBundleName": "MacroTrack Pro",
+    "proBundleName": "FLOW Pro",
     "proBundleDescription": "Всё разблокировано"
   },
   "themes": {
@@ -509,5 +528,9 @@
   },
   "settings": {
     "title": "Настройки"
+  },
+  "offline": {
+    "title": "Нет подключения к интернету",
+    "body": "Для работы FLOW нужен интернет. Подключитесь снова - приложение возобновит работу автоматически."
   }
 }

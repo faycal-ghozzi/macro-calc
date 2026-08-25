@@ -27,12 +27,23 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async () => {
     if (!user) return
     setLoading(true)
-    const { data } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
-    setProfile(data as Profile | null)
+    if (error) {
+      // Right after a cold start, the persisted session's access token can
+      // still be mid-refresh when this fires, so the very first request can
+      // get RLS-rejected (looks like "no row found") even though the row
+      // exists - one retry after a short delay clears this up rather than
+      // permanently settling on profile=null for the rest of the session
+      // (which downstream code - e.g. the first-login tour check - can't
+      // tell apart from a genuinely missing profile).
+      await new Promise<void>((resolve) => setTimeout(resolve, 800))
+      ;({ data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single())
+    }
+    setProfile((data as Profile | null) ?? null)
     setLoading(false)
   }, [user])
 

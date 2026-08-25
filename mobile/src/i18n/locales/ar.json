@@ -12,7 +12,7 @@
     "all": "الكل",
     "found": "تم العثور على:",
     "restartRequiredTitle": "إعادة التشغيل مطلوبة",
-    "restartRequiredBody": "يرجى إغلاق تطبيق MacroTrack وإعادة فتحه لتطبيق اتجاه التخطيط الجديد.",
+    "restartRequiredBody": "يرجى إغلاق تطبيق FLOW وإعادة فتحه لتطبيق اتجاه التخطيط الجديد.",
     "comingSoonTitle": "قريبًا",
     "comingSoonBody": "الاشتراكات غير متاحة بعد - ترقب ذلك قريبًا!",
     "notFoundTitle": "غير موجود",
@@ -58,7 +58,7 @@
     "fiber": "الألياف"
   },
   "auth": {
-    "appName": "MacroTrack",
+    "appName": "FLOW",
     "tagline": "تتبع تغذيتك، وحقق أهدافك",
     "signIn": "تسجيل الدخول",
     "signUp": "التسجيل",
@@ -101,7 +101,8 @@
     "addFood": "إضافة طعام",
     "yesterday": "أمس",
     "logWeight": "تسجيل الوزن",
-    "water": "الماء"
+    "water": "الماء",
+    "waterErrorTitle": "تعذّر تسجيل الماء"
   },
   "log": {
     "title": "سجل اليوم",
@@ -118,7 +119,7 @@
     "shareTitle": "مشاركة السجل اليومي",
     "shareHint": "اطلب منهم الضغط على مسح في تبويب السجل الخاص بهم",
     "scanTitle": "مسح رمز السجل اليومي",
-    "scanHint": "وجّه الكاميرا نحو رمز QR لسجل يومي من MacroTrack",
+    "scanHint": "وجّه الكاميرا نحو رمز QR لسجل يومي من FLOW",
     "importTitle": "استيراد السجل",
     "importFrom": "من {{date}}",
     "willBeAddedToToday": "سيُضاف إلى اليوم",
@@ -143,9 +144,9 @@
     "emptySubtitle": "اضغط على جديد لإنشاء وجبتك الأولى",
     "today": "اليوم",
     "shareTitle": "مشاركة الوجبة",
-    "shareHint": "اطلب من صديقك مسح هذا الرمز باستخدام MacroTrack",
+    "shareHint": "اطلب من صديقك مسح هذا الرمز باستخدام FLOW",
     "scanTitle": "مسح رمز الوجبة",
-    "scanHint": "وجّه الكاميرا نحو رمز QR لوجبة من MacroTrack",
+    "scanHint": "وجّه الكاميرا نحو رمز QR لوجبة من FLOW",
     "importTitle": "استيراد وجبة",
     "importNamePlaceholder": "اسم الوجبة (أعد تسميتها أو اتركها كما هي)",
     "saveToMyMeals": "حفظ في وجباتي",
@@ -197,7 +198,7 @@
     "dinnerTime": "العشاء",
     "reminderTime": "وقت التذكير",
     "notifPermissionDeniedTitle": "الإشعارات معطّلة",
-    "notifPermissionDeniedBody": "فعّل إشعارات MacroTrack من الإعدادات لتصلك تذكيرات الوجبات.",
+    "notifPermissionDeniedBody": "فعّل إشعارات FLOW من الإعدادات لتصلك تذكيرات الوجبات.",
     "openSettings": "فتح الإعدادات",
     "goalLoseWeightLabel": "إنقاص الوزن",
     "goalLoseWeightDescription": "عجز 500 سعرة حرارية",
@@ -222,12 +223,30 @@
     "addOnsActive_few": "{{count}} إضافات نشطة",
     "addOnsActive_many": "{{count}} إضافة نشطة",
     "addOnsActive_other": "{{count}} إضافة نشطة",
+    "sectionAddOns": "الإضافات",
+    "addOnActive": "مفعّلة",
+    "activateConfirmTitle": "تفعيل {{name}}؟",
+    "activateConfirmBody": "{{price}} - يسري فورًا.",
+    "activate": "تفعيل",
+    "deactivateConfirmTitle": "إلغاء تفعيل {{name}}؟",
+    "deactivateConfirmBody": "ستفقد الوصول إلى هذه الميزة فورًا.",
+    "deactivate": "إلغاء التفعيل",
+    "upsellTitle": "فكّر في الباقة بدلاً من ذلك",
+    "upsellBody": "مع هذه الإضافة ستدفع تقريبًا مثل سعر باقة {{name}} الكاملة التي تفتح كل شيء.",
+    "seeProBundle": "عرض {{name}}",
+    "activateAnyway": "تفعيل على أي حال",
     "freePlan": "الخطة المجانية",
     "upgradeTo": "الترقية إلى {{name}}",
     "reviewActiveItems": "مراجعة العناصر النشطة",
     "paywallSubscriptionHeadline": "افتح كل الميزات",
     "currentEmail": "الحالي: {{email}}",
-    "confirmationSentToNewEmail": "تم إرسال رسالة تأكيد إلى البريد الإلكتروني الجديد.",
+    "confirmationSentToNewEmail": "تحقّق من بريدك الحالي والجديد لتأكيد التغيير.",
+    "verificationCodeSent": "أرسلنا رمز تحقق إلى بريدك الإلكتروني.",
+    "verificationCodeInvalid": "هذا الرمز غير صحيح أو انتهت صلاحيته.",
+    "enterVerificationCode": "أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى {{email}}.",
+    "verificationCodePlaceholder": "رمز من 6 أرقام",
+    "confirmCode": "تأكيد الرمز",
+    "resendCode": "إعادة إرسال الرمز",
     "passwordsMismatch": "كلمتا المرور غير متطابقتين.",
     "passwordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
     "currentPasswordIncorrect": "كلمة المرور الحالية غير صحيحة.",
@@ -498,7 +517,7 @@
     "advancedReportsDescription": "عرض التقدم الشهري والاتجاهات، وتصدير CSV/PDF",
     "allThemesName": "جميع المظاهر",
     "allThemesDescription": "مظاهر ضوء النهار وتيرا وفولتاج",
-    "proBundleName": "MacroTrack Pro",
+    "proBundleName": "FLOW Pro",
     "proBundleDescription": "كل شيء مفتوح"
   },
   "themes": {
@@ -531,5 +550,9 @@
   },
   "settings": {
     "title": "الإعدادات"
+  },
+  "offline": {
+    "title": "لا يوجد اتصال بالإنترنت",
+    "body": "يحتاج FLOW إلى اتصال بالإنترنت للعمل. أعد الاتصال وسيستأنف التطبيق تلقائيًا."
   }
 }

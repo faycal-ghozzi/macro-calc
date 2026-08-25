@@ -1,6 +1,14 @@
 import { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo, ReactNode } from 'react'
-import { View, ViewStyle } from 'react-native'
-import { useTourProgressStore } from '../store/useTourProgressStore'
+import { View, ViewStyle, StyleSheet } from 'react-native'
+import Animated, { useSharedValue, useAnimatedStyle, interpolateColor, withTiming, withRepeat, Easing } from 'react-native-reanimated'
+import { useProfile } from '../hooks/useProfile'
+import { useTheme } from '../theme/ThemeProvider'
+
+// Shared with TourOverlay's dimming-scrim cutout so the hole cut around a
+// target and the glow ring drawn on the target always describe the exact
+// same box - drift here reads as two misaligned outlines around one thing.
+export const SPOTLIGHT_PADDING = 2
+export const SPOTLIGHT_RADIUS_INSET = 6
 
 export interface Rect {
   x: number
@@ -8,6 +16,11 @@ export interface Rect {
   width: number
   height: number
 }
+
+// Stable empty fallback for profile?.seen_feature_tips - an inline `{}`
+// would be a fresh reference every render, tripping exhaustive-deps on the
+// effects that key off it.
+export const EMPTY_SEEN_TIPS: Record<string, boolean> = {}
 
 export interface TourStepData {
   id: string
@@ -56,8 +69,22 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const [targetsVersion, setTargetsVersion] = useState(0)
   const [current, setCurrent] = useState<ActiveStep | null>(null)
   const [queue, setQueue] = useState<TourStepData[]>([])
-  const setHasSeenFirstLoginTour = useTourProgressStore((s) => s.setHasSeenFirstLoginTour)
-  const markTipSeen = useTourProgressStore((s) => s.markTipSeen)
+  const { profile, updateProfile } = useProfile()
+  const profileRef = useRef(profile)
+  profileRef.current = profile
+
+  // "Seen" state lives on the account's profile row (server-side, so it's
+  // correctly scoped per account rather than per device - see
+  // supabase/tour_progress.sql). A plain upsert replaces the jsonb column
+  // wholesale, so seenFeatureTips writes read-modify-write off the latest
+  // profile via this ref rather than a stale closure.
+  const setHasSeenFirstLoginTour = useCallback((v: boolean) => {
+    updateProfile({ has_seen_first_login_tour: v })
+  }, [updateProfile])
+
+  const markTipSeen = useCallback((id: string) => {
+    updateProfile({ seen_feature_tips: { ...profileRef.current?.seen_feature_tips, [id]: true } })
+  }, [updateProfile])
 
   const registerTarget = useCallback((id: string, rect: Rect) => {
     const prev = targetsRef.current[id]
@@ -136,11 +163,57 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
 export const useTour = () => useContext(TourContext)
 
+const GLOW_CYCLE_MS = 12800
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.substring(0, 2), 16)
+  const g = parseInt(clean.substring(2, 4), 16)
+  const b = parseInt(clean.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+// Renders directly on top of the target itself (a sibling inside the same
+// box, filled via inset positioning) instead of as a separately-measured
+// overlay shape - so it's always pixel-perfect aligned with the real
+// button's own shape, with no coordinate bookkeeping that can go stale or
+// land slightly off-center. A soft animated border + tinted fill that
+// cycles through the app's accent/macro colors, rather than a hard-edged
+// spotlight ring.
+export function TourGlow({ id }: { id: string }) {
+  const theme = useTheme()
+  const { activeStep } = useTour()
+  const isActive = activeStep?.id === id
+  const opacity = useSharedValue(0)
+  const cycle = useSharedValue(0)
+
+  useEffect(() => {
+    opacity.value = withTiming(isActive ? 1 : 0, { duration: isActive ? 260 : 200, easing: Easing.out(Easing.cubic) })
+  }, [isActive, opacity])
+
+  useEffect(() => {
+    cycle.value = withRepeat(withTiming(1, { duration: GLOW_CYCLE_MS, easing: Easing.linear }), -1, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const borderColors = [theme.colors.accent, theme.colors.protein, theme.colors.carbs, theme.colors.fat, theme.colors.accent]
+  const fillColors = borderColors.map((c) => hexToRgba(c, 0.16))
+  const colorStops = [0, 0.25, 0.5, 0.75, 1]
+  const borderRadius = theme.style.cardRadius - SPOTLIGHT_RADIUS_INSET
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    borderColor: interpolateColor(cycle.value, colorStops, borderColors),
+    backgroundColor: interpolateColor(cycle.value, colorStops, fillColors),
+  }))
+
+  return <Animated.View pointerEvents="none" style={[styles.glow, { borderRadius }, animatedStyle]} />
+}
+
 // Wraps any element so it can be spotlighted by id during a tour - measures
-// its on-screen position via measureInWindow and registers it, rather than
-// requiring every screen to manage refs/measurement itself. This is also
-// what makes the tour work correctly on any device/screen size: positions
-// are always the real rendered bounds, never a computed guess.
+// its on-screen position via measureInWindow and registers it (used to
+// position the dimming scrim's cutout), and renders the glow itself as a
+// same-box sibling rather than through that measurement.
 export function TourTarget({ id, children, style }: { id: string; children: ReactNode; style?: ViewStyle }) {
   const { registerTarget, unregisterTarget } = useTour()
   const ref = useRef<View>(null)
@@ -167,6 +240,18 @@ export function TourTarget({ id, children, style }: { id: string; children: Reac
       }}
     >
       {children}
+      <TourGlow id={id} />
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  glow: {
+    position: 'absolute',
+    top: -SPOTLIGHT_PADDING,
+    left: -SPOTLIGHT_PADDING,
+    right: -SPOTLIGHT_PADDING,
+    bottom: -SPOTLIGHT_PADDING,
+    borderWidth: 2.5,
+  },
+})

@@ -1,0 +1,33 @@
+<div style="background-color:#F6F7F9; padding:32px 16px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; margin:0 auto;">
+    <tr>
+      <td style="padding-bottom:24px; text-align:center;">
+        <span style="font-size:20px; font-weight:800; color:#059669; letter-spacing:-0.3px;">FLOW</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="background-color:#FFFFFF; border:1px solid #E6E8EC; border-radius:16px; padding:32px;">
+        <h1 style="margin:0 0 12px; font-size:20px; font-weight:700; color:#12151A;">Confirm your email change</h1>
+        <p style="margin:0 0 24px; font-size:14px; line-height:22px; color:#5B6470;">
+          Someone requested that <strong>{{ .NewEmail }}</strong> become the email address for the FLOW account currently at <strong>{{ .Email }}</strong>. If that's you, tap the button below to confirm.
+        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="border-radius:10px; background-color:#34D399;">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block; padding:12px 24px; font-size:14px; font-weight:700; color:#04140D; text-decoration:none;">Confirm change</a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:24px 0 0; font-size:12px; line-height:18px; color:#9BA3AE;">
+          You're receiving this at both the old and new address as a security check - the change only takes effect once both are confirmed. If you didn't request this, ignore this email and your account stays as it is.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding-top:20px; text-align:center;">
+        <p style="margin:0; font-size:11px; color:#9BA3AE;">Sent by FLOW &middot; This link expires soon for your security.</p>
+        <p style="margin:6px 0 0; font-size:11px; color:#9BA3AE;">Didn't request this? Reply to support@yourdomain.com right away.</p>
+      </td>
+    </tr>
+  </table>
+</div>

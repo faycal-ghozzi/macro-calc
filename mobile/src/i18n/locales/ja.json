@@ -12,7 +12,7 @@
     "all": "すべて",
     "found": "見つかりました:",
     "restartRequiredTitle": "再起動が必要です",
-    "restartRequiredBody": "新しいレイアウトの向きを適用するには、MacroTrackを閉じて開き直してください。",
+    "restartRequiredBody": "新しいレイアウトの向きを適用するには、FLOWを閉じて開き直してください。",
     "comingSoonTitle": "近日公開",
     "comingSoonBody": "サブスクリプションはまだご利用いただけません。近日公開をお待ちください！",
     "notFoundTitle": "見つかりません",
@@ -58,7 +58,7 @@
     "fiber": "食物繊維"
   },
   "auth": {
-    "appName": "MacroTrack",
+    "appName": "FLOW",
     "tagline": "栄養を記録して、目標を達成しよう",
     "signIn": "サインイン",
     "signUp": "サインアップ",
@@ -96,7 +96,8 @@
     "addFood": "食品を追加",
     "yesterday": "昨日",
     "logWeight": "体重を記録",
-    "water": "水分"
+    "water": "水分",
+    "waterErrorTitle": "水分を記録できませんでした"
   },
   "log": {
     "title": "今日の記録",
@@ -113,7 +114,7 @@
     "shareTitle": "1日の記録を共有",
     "shareHint": "相手に記録タブの「スキャン」をタップしてもらいましょう",
     "scanTitle": "1日の記録のQRコードをスキャン",
-    "scanHint": "MacroTrackの1日の記録QRコードにカメラを向けてください",
+    "scanHint": "FLOWの1日の記録QRコードにカメラを向けてください",
     "importTitle": "記録をインポート",
     "importFrom": "{{date}}から",
     "willBeAddedToToday": "今日に追加されます",
@@ -138,9 +139,9 @@
     "emptySubtitle": "「新規」をタップして最初のメニューを作成しましょう",
     "today": "今日",
     "shareTitle": "メニューを共有",
-    "shareHint": "友達にMacroTrackでこれをスキャンしてもらいましょう",
+    "shareHint": "友達にFLOWでこれをスキャンしてもらいましょう",
     "scanTitle": "メニューのQRコードをスキャン",
-    "scanHint": "MacroTrackのメニューQRコードにカメラを向けてください",
+    "scanHint": "FLOWのメニューQRコードにカメラを向けてください",
     "importTitle": "メニューをインポート",
     "importNamePlaceholder": "メニュー名（変更してもそのままでもOK）",
     "saveToMyMeals": "マイメニューに保存",
@@ -192,7 +193,7 @@
     "dinnerTime": "夕食",
     "reminderTime": "リマインダーの時間",
     "notifPermissionDeniedTitle": "通知がオフになっています",
-    "notifPermissionDeniedBody": "設定でMacroTrackの通知をオンにすると、食事のリマインダーを受け取れます。",
+    "notifPermissionDeniedBody": "設定でFLOWの通知をオンにすると、食事のリマインダーを受け取れます。",
     "openSettings": "設定を開く",
     "goalLoseWeightLabel": "減量",
     "goalLoseWeightDescription": "-500kcalのカロリー収支",
@@ -212,12 +213,30 @@
     "activityVeryActiveDescription": "毎日の激しいトレーニング",
     "compedAccount": "特別アカウント、すべての機能が解放済み",
     "addOnsActive_other": "アドオン{{count}}件が有効",
+    "sectionAddOns": "アドオン",
+    "addOnActive": "有効",
+    "activateConfirmTitle": "{{name}}を有効にしますか?",
+    "activateConfirmBody": "{{price}} - すぐに適用されます。",
+    "activate": "有効にする",
+    "deactivateConfirmTitle": "{{name}}を無効にしますか?",
+    "deactivateConfirmBody": "この機能へのアクセスがすぐに失われます。",
+    "deactivate": "無効にする",
+    "upsellTitle": "バンドルの方がお得かもしれません",
+    "upsellBody": "このアドオンを追加すると、すべてを解放する{{name}}バンドルとほぼ同じ料金になります。",
+    "seeProBundle": "{{name}}を見る",
+    "activateAnyway": "このまま有効にする",
     "freePlan": "無料プラン",
     "upgradeTo": "{{name}}にアップグレード",
     "reviewActiveItems": "有効な項目を確認",
     "paywallSubscriptionHeadline": "すべての機能を解放",
     "currentEmail": "現在: {{email}}",
-    "confirmationSentToNewEmail": "新しいメールアドレスに確認メールを送信しました。",
+    "confirmationSentToNewEmail": "現在のメールと新しいメールの両方で変更を確認してください。",
+    "verificationCodeSent": "確認コードをメールで送信しました。",
+    "verificationCodeInvalid": "コードが正しくないか、有効期限が切れています。",
+    "enterVerificationCode": "{{email}}に送信した6桁のコードを入力してください。",
+    "verificationCodePlaceholder": "6桁のコード",
+    "confirmCode": "コードを確認",
+    "resendCode": "コードを再送信",
     "passwordsMismatch": "パスワードが一致しません。",
     "passwordTooShort": "パスワードは8文字以上で入力してください。",
     "currentPasswordIncorrect": "現在のパスワードが正しくありません。",
@@ -443,7 +462,7 @@
     "advancedReportsDescription": "月間・傾向レポートの表示、CSV/PDFエクスポート",
     "allThemesName": "全テーマ",
     "allThemesDescription": "Daylight・Terra・Voltageテーマ",
-    "proBundleName": "MacroTrack Pro",
+    "proBundleName": "FLOW Pro",
     "proBundleDescription": "すべての機能が解放済み"
   },
   "themes": {
@@ -476,5 +495,9 @@
   },
   "settings": {
     "title": "設定"
+  },
+  "offline": {
+    "title": "インターネット接続がありません",
+    "body": "FLOWの利用にはインターネット接続が必要です。再接続すると自動的に再開します。"
   }
 }

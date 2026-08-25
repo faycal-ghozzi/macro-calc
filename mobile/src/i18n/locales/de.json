@@ -12,7 +12,7 @@
     "all": "Alle",
     "found": "Gefunden:",
     "restartRequiredTitle": "Neustart erforderlich",
-    "restartRequiredBody": "Bitte schließe MacroTrack und öffne es erneut, um die neue Layout-Richtung zu übernehmen.",
+    "restartRequiredBody": "Bitte schließe FLOW und öffne es erneut, um die neue Layout-Richtung zu übernehmen.",
     "comingSoonTitle": "Demnächst verfügbar",
     "comingSoonBody": "Abos sind noch nicht verfügbar – schau bald wieder vorbei!",
     "notFoundTitle": "Nicht gefunden",
@@ -58,7 +58,7 @@
     "fiber": "Ballaststoffe"
   },
   "auth": {
-    "appName": "MacroTrack",
+    "appName": "FLOW",
     "tagline": "Behalte deine Ernährung im Blick, erreiche deine Ziele",
     "signIn": "Anmelden",
     "signUp": "Registrieren",
@@ -97,7 +97,8 @@
     "addFood": "Essen hinzufügen",
     "yesterday": "Gestern",
     "logWeight": "Gewicht eintragen",
-    "water": "Wasser"
+    "water": "Wasser",
+    "waterErrorTitle": "Wasser konnte nicht erfasst werden"
   },
   "log": {
     "title": "Heutiges Tagebuch",
@@ -114,7 +115,7 @@
     "shareTitle": "Tagebuch teilen",
     "shareHint": "Bitte die Person, im Tagebuch-Tab auf Scannen zu tippen",
     "scanTitle": "Tagebuch-QR-Code scannen",
-    "scanHint": "Richte die Kamera auf einen MacroTrack-Tagebuch-QR-Code",
+    "scanHint": "Richte die Kamera auf einen FLOW-Tagebuch-QR-Code",
     "importTitle": "Tagebuch importieren",
     "importFrom": "Vom {{date}}",
     "willBeAddedToToday": "Wird zu heute hinzugefügt",
@@ -139,9 +140,9 @@
     "emptySubtitle": "Tippe auf Neu, um deine erste Mahlzeit zu erstellen",
     "today": "Heute",
     "shareTitle": "Mahlzeit teilen",
-    "shareHint": "Bitte eine Freundin oder einen Freund, das mit MacroTrack zu scannen",
+    "shareHint": "Bitte eine Freundin oder einen Freund, das mit FLOW zu scannen",
     "scanTitle": "Mahlzeiten-QR-Code scannen",
-    "scanHint": "Richte die Kamera auf einen MacroTrack-Mahlzeiten-QR-Code",
+    "scanHint": "Richte die Kamera auf einen FLOW-Mahlzeiten-QR-Code",
     "importTitle": "Mahlzeit importieren",
     "importNamePlaceholder": "Name der Mahlzeit (umbenennen oder beibehalten)",
     "saveToMyMeals": "In meinen Mahlzeiten speichern",
@@ -193,7 +194,7 @@
     "dinnerTime": "Abendessen",
     "reminderTime": "Erinnerungszeit",
     "notifPermissionDeniedTitle": "Benachrichtigungen deaktiviert",
-    "notifPermissionDeniedBody": "Aktiviere Benachrichtigungen für MacroTrack in den Einstellungen, um Mahlzeiten-Erinnerungen zu erhalten.",
+    "notifPermissionDeniedBody": "Aktiviere Benachrichtigungen für FLOW in den Einstellungen, um Mahlzeiten-Erinnerungen zu erhalten.",
     "openSettings": "Einstellungen öffnen",
     "goalLoseWeightLabel": "Abnehmen",
     "goalLoseWeightDescription": "-500 kcal Defizit",
@@ -214,12 +215,30 @@
     "compedAccount": "Kostenloses Konto, alles freigeschaltet",
     "addOnsActive_one": "{{count}} Add-on aktiv",
     "addOnsActive_other": "{{count}} Add-ons aktiv",
+    "sectionAddOns": "Erweiterungen",
+    "addOnActive": "Aktiv",
+    "activateConfirmTitle": "{{name}} aktivieren?",
+    "activateConfirmBody": "{{price}} - wird sofort wirksam.",
+    "activate": "Aktivieren",
+    "deactivateConfirmTitle": "{{name}} deaktivieren?",
+    "deactivateConfirmBody": "Du verlierst sofort den Zugriff auf diese Funktion.",
+    "deactivate": "Deaktivieren",
+    "upsellTitle": "Das Bundle könnte sich mehr lohnen",
+    "upsellBody": "Mit dieser Erweiterung zahlst du fast so viel wie für das komplette {{name}}-Bundle, das alles freischaltet.",
+    "seeProBundle": "{{name}} ansehen",
+    "activateAnyway": "Trotzdem aktivieren",
     "freePlan": "Kostenloser Plan",
     "upgradeTo": "Auf {{name}} upgraden",
     "reviewActiveItems": "Aktive Elemente überprüfen",
     "paywallSubscriptionHeadline": "Schalte alles frei",
     "currentEmail": "Aktuell: {{email}}",
-    "confirmationSentToNewEmail": "Bestätigung an die neue E-Mail-Adresse gesendet.",
+    "confirmationSentToNewEmail": "Bestätige die Änderung sowohl in deinem aktuellen als auch in deinem neuen Postfach.",
+    "verificationCodeSent": "Wir haben dir einen Bestätigungscode per E-Mail geschickt.",
+    "verificationCodeInvalid": "Dieser Code ist falsch oder abgelaufen.",
+    "enterVerificationCode": "Gib den 6-stelligen Code ein, den wir an {{email}} gesendet haben.",
+    "verificationCodePlaceholder": "6-stelliger Code",
+    "confirmCode": "Code bestätigen",
+    "resendCode": "Code erneut senden",
     "passwordsMismatch": "Die Passwörter stimmen nicht überein.",
     "passwordTooShort": "Das Passwort muss mindestens 8 Zeichen lang sein.",
     "currentPasswordIncorrect": "Das aktuelle Passwort ist falsch.",
@@ -454,7 +473,7 @@
     "advancedReportsDescription": "Monats- und Trendansichten, CSV-/PDF-Export",
     "allThemesName": "Alle Designs",
     "allThemesDescription": "Die Designs Daylight, Terra und Voltage",
-    "proBundleName": "MacroTrack Pro",
+    "proBundleName": "FLOW Pro",
     "proBundleDescription": "Alles freigeschaltet"
   },
   "themes": {
@@ -487,5 +506,9 @@
   },
   "settings": {
     "title": "Einstellungen"
+  },
+  "offline": {
+    "title": "Keine Internetverbindung",
+    "body": "FLOW benötigt eine Internetverbindung. Sobald du wieder verbunden bist, läuft die App automatisch weiter."
   }
 }

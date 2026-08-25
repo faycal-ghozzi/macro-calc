@@ -21,7 +21,8 @@ import { useDowngradeUiStore } from '../store/useDowngradeUiStore'
 import { useTour } from '../contexts/TourContext'
 import { getFullTourSteps } from '../lib/tourSteps'
 import { supabase } from '../lib/supabase'
-import { PRODUCTS } from '../lib/products'
+import { PRODUCTS, INDIVIDUAL_PRODUCT_IDS, type ProductId } from '../lib/products'
+import { wouldApproachBundle } from '../lib/entitlements'
 import { mirrorChevron } from '../lib/rtl'
 import type { ProfileStackParamList } from '../navigation/ProfileStackNavigator'
 
@@ -100,12 +101,117 @@ export default function SettingsScreen() {
   )
 }
 
+const ADDON_ICONS: Record<ProductId, string> = {
+  remove_ads: 'eye-off-outline',
+  unlimited_meals_favorites: 'infinite-outline',
+  qr_sharing_unlimited: 'qr-code-outline',
+  advanced_reports: 'bar-chart-outline',
+  all_themes: 'color-palette-outline',
+  pro_bundle: 'sparkles-outline',
+}
+
+function AddOnRow({ id, active, busy, onActivate, onDeactivate }: {
+  id: ProductId
+  active: boolean
+  busy: boolean
+  onActivate: () => void
+  onDeactivate: () => void
+}) {
+  const theme = useTheme()
+  const { t } = useTranslation()
+  const product = PRODUCTS[id]
+
+  return (
+    <Pressable
+      onPress={active ? onDeactivate : onActivate}
+      disabled={busy}
+      style={[styles.addOnRow, { borderColor: theme.colors.cardBorder, opacity: busy ? 0.6 : 1 }]}
+    >
+      <View style={[styles.addOnIcon, { backgroundColor: theme.colors.backgroundElevated }]}>
+        <Ionicons name={ADDON_ICONS[id]} size={16} color={theme.colors.textSecondary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary }}>{t(product.nameKey)}</Text>
+        <Text style={{ fontSize: 11, color: theme.colors.textTertiary }} numberOfLines={1}>{t(product.descriptionKey)}</Text>
+      </View>
+      {busy ? (
+        <ActivityIndicator size="small" color={theme.colors.textTertiary} />
+      ) : active ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.success }}>{t('profile.addOnActive')}</Text>
+        </View>
+      ) : (
+        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.accent }}>
+          ${product.monthlyPrice.toFixed(2)}{t('paywall.perMonth')}
+        </Text>
+      )}
+    </Pressable>
+  )
+}
+
 function SubscriptionSection() {
   const theme = useTheme()
   const { t } = useTranslation()
-  const { flags } = useEntitlements()
+  const { flags, activateProduct, deactivateProduct } = useEntitlements()
   const setDismissed = useDowngradeUiStore((s) => s.setDismissed)
-  const [showProPaywall, setShowProPaywall] = useState(false)
+  const [paywallProduct, setPaywallProduct] = useState<ProductId | null>(null)
+  const [busyProduct, setBusyProduct] = useState<ProductId | null>(null)
+
+  async function doActivate(id: ProductId) {
+    Haptics.selectionAsync()
+    setBusyProduct(id)
+    const ok = await activateProduct(id)
+    setBusyProduct(null)
+    if (ok) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+  }
+
+  function confirmActivate(id: ProductId) {
+    const product = PRODUCTS[id]
+    Alert.alert(
+      t('profile.activateConfirmTitle', { name: t(product.nameKey) }),
+      t('profile.activateConfirmBody', { price: `$${product.monthlyPrice.toFixed(2)}${t('paywall.perMonth')}` }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('profile.activate'), onPress: () => doActivate(id) },
+      ]
+    )
+  }
+
+  function handleActivate(id: ProductId) {
+    if (wouldApproachBundle(flags.activeProductIds, id)) {
+      Alert.alert(
+        t('profile.upsellTitle'),
+        t('profile.upsellBody', { name: t(PRODUCTS.pro_bundle.nameKey) }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('profile.seeProBundle', { name: t(PRODUCTS.pro_bundle.nameKey) }), onPress: () => setPaywallProduct('pro_bundle') },
+          { text: t('profile.activateAnyway'), onPress: () => confirmActivate(id) },
+        ]
+      )
+      return
+    }
+    confirmActivate(id)
+  }
+
+  async function doDeactivate(id: ProductId) {
+    Haptics.selectionAsync()
+    setBusyProduct(id)
+    await deactivateProduct(id)
+    setBusyProduct(null)
+  }
+
+  function handleDeactivate(id: ProductId) {
+    const product = PRODUCTS[id]
+    Alert.alert(
+      t('profile.deactivateConfirmTitle', { name: t(product.nameKey) }),
+      t('profile.deactivateConfirmBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('profile.deactivate'), style: 'destructive', onPress: () => doDeactivate(id) },
+      ]
+    )
+  }
 
   const planLabel = (() => {
     if (flags.isComped) return t('profile.compedAccount')
@@ -113,6 +219,8 @@ function SubscriptionSection() {
     if (flags.activeProductIds.length > 0) return t('profile.addOnsActive', { count: flags.activeProductIds.length })
     return t('profile.freePlan')
   })()
+
+  const hasEverything = flags.isComped || flags.activeProductIds.includes('pro_bundle')
 
   return (
     <Card style={{ gap: 12 }}>
@@ -122,11 +230,11 @@ function SubscriptionSection() {
       </View>
       <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary }}>{planLabel}</Text>
 
-      <BundleNudgeBanner activeProductIds={flags.activeProductIds} onPress={() => setShowProPaywall(true)} />
+      <BundleNudgeBanner activeProductIds={flags.activeProductIds} onPress={() => setPaywallProduct('pro_bundle')} />
 
-      {!flags.isComped && !flags.activeProductIds.includes('pro_bundle') && (
+      {!hasEverything && (
         <Pressable
-          onPress={() => setShowProPaywall(true)}
+          onPress={() => setPaywallProduct('pro_bundle')}
           style={[styles.secondaryButton, { backgroundColor: theme.colors.accentSoft, borderRadius: theme.style.cardRadius - 8 }]}
         >
           <Ionicons name="sparkles-outline" size={14} color={theme.colors.accent} />
@@ -144,11 +252,27 @@ function SubscriptionSection() {
         </Pressable>
       )}
 
+      {!hasEverything && (
+        <View style={{ gap: 8 }}>
+          <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionAddOns')}</Text>
+          {INDIVIDUAL_PRODUCT_IDS.map((id) => (
+            <AddOnRow
+              key={id}
+              id={id}
+              active={flags.activeProductIds.includes(id)}
+              busy={busyProduct === id}
+              onActivate={() => handleActivate(id)}
+              onDeactivate={() => handleDeactivate(id)}
+            />
+          ))}
+        </View>
+      )}
+
       <PaywallModal
-        visible={showProPaywall}
-        productId="pro_bundle"
-        headline={t('profile.paywallSubscriptionHeadline')}
-        onClose={() => setShowProPaywall(false)}
+        visible={!!paywallProduct}
+        productId={paywallProduct}
+        headline={paywallProduct === 'pro_bundle' ? t('profile.paywallSubscriptionHeadline') : undefined}
+        onClose={() => setPaywallProduct(null)}
       />
     </Card>
   )
@@ -175,6 +299,11 @@ function SecuritySection({
   const [pwSucceeded, setPwSucceeded] = useState(false)
   const [emailLoading, setEmailLoading] = useState(false)
   const [pwLoading, setPwLoading] = useState(false)
+  // 'form' = enter current/new password, 'code' = confirm with the emailed
+  // verification code (see supabase.auth.reauthenticate() below) before the
+  // change actually takes effect.
+  const [pwStep, setPwStep] = useState<'form' | 'code'>('form')
+  const [pwCode, setPwCode] = useState('')
 
   async function handleEmailUpdate() {
     if (!newEmail.trim()) return
@@ -192,13 +321,46 @@ function SecuritySection({
     if (newPw.length < 8) { setPwSucceeded(false); setPwStatus(t('profile.passwordTooShort')); return }
     setPwLoading(true)
     setPwStatus(null)
+    // Re-entering the current password proves it's really them - the
+    // emailed code below is a second, independent factor on top of that,
+    // not a replacement for it.
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: currentPw })
     if (signInError) { setPwLoading(false); setPwSucceeded(false); setPwStatus(t('profile.currentPasswordIncorrect')); return }
-    const { error } = await supabase.auth.updateUser({ password: newPw })
+    const { error: reauthError } = await supabase.auth.reauthenticate()
+    setPwLoading(false)
+    if (reauthError) { setPwSucceeded(false); setPwStatus(reauthError.message); return }
+    setPwSucceeded(true)
+    setPwStatus(t('profile.verificationCodeSent'))
+    setPwStep('code')
+  }
+
+  async function handleConfirmPasswordCode() {
+    if (!pwCode.trim()) return
+    setPwLoading(true)
+    setPwStatus(null)
+    const { error } = await supabase.auth.updateUser({ password: newPw, nonce: pwCode.trim() })
     setPwLoading(false)
     setPwSucceeded(!error)
-    setPwStatus(error ? error.message : t('profile.passwordUpdated'))
-    if (!error) { setCurrentPw(''); setNewPw(''); setConfirmPw(''); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) }
+    setPwStatus(error ? t('profile.verificationCodeInvalid') : t('profile.passwordUpdated'))
+    if (!error) {
+      setCurrentPw(''); setNewPw(''); setConfirmPw(''); setPwCode(''); setPwStep('form')
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    }
+  }
+
+  async function handleResendPasswordCode() {
+    setPwLoading(true)
+    setPwStatus(null)
+    const { error } = await supabase.auth.reauthenticate()
+    setPwLoading(false)
+    setPwSucceeded(!error)
+    setPwStatus(error ? error.message : t('profile.verificationCodeSent'))
+  }
+
+  function handleCancelPasswordCode() {
+    setPwStep('form')
+    setPwCode('')
+    setPwStatus(null)
   }
 
   return (
@@ -236,45 +398,83 @@ function SecuritySection({
           <Ionicons name="lock-closed-outline" size={15} color={theme.colors.textTertiary} />
           <Text style={[styles.sectionLabel, { color: theme.colors.textSecondary }]}>{t('profile.sectionChangePassword')}</Text>
         </View>
-        <TextInput
-          placeholder={t('profile.currentPasswordPlaceholder')}
-          placeholderTextColor={theme.colors.textTertiary}
-          value={currentPw}
-          onChangeText={setCurrentPw}
-          secureTextEntry
-          style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
-        />
-        <TextInput
-          placeholder={t('profile.newPasswordPlaceholder')}
-          placeholderTextColor={theme.colors.textTertiary}
-          value={newPw}
-          onChangeText={setNewPw}
-          secureTextEntry
-          style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
-        />
-        <TextInput
-          placeholder={t('profile.confirmNewPasswordPlaceholder')}
-          placeholderTextColor={theme.colors.textTertiary}
-          value={confirmPw}
-          onChangeText={setConfirmPw}
-          secureTextEntry
-          style={[
-            styles.input,
-            { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 },
-            confirmPw && confirmPw !== newPw ? { borderWidth: 1, borderColor: theme.colors.danger } : null,
-          ]}
-        />
-        {pwStatus && (
-          <Text style={{ fontSize: 11, color: pwSucceeded ? theme.colors.success : theme.colors.danger }}>{pwStatus}</Text>
+
+        {pwStep === 'form' ? (
+          <>
+            <TextInput
+              placeholder={t('profile.currentPasswordPlaceholder')}
+              placeholderTextColor={theme.colors.textTertiary}
+              value={currentPw}
+              onChangeText={setCurrentPw}
+              secureTextEntry
+              style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+            />
+            <TextInput
+              placeholder={t('profile.newPasswordPlaceholder')}
+              placeholderTextColor={theme.colors.textTertiary}
+              value={newPw}
+              onChangeText={setNewPw}
+              secureTextEntry
+              style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 }]}
+            />
+            <TextInput
+              placeholder={t('profile.confirmNewPasswordPlaceholder')}
+              placeholderTextColor={theme.colors.textTertiary}
+              value={confirmPw}
+              onChangeText={setConfirmPw}
+              secureTextEntry
+              style={[
+                styles.input,
+                { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8 },
+                confirmPw && confirmPw !== newPw ? { borderWidth: 1, borderColor: theme.colors.danger } : null,
+              ]}
+            />
+            {pwStatus && (
+              <Text style={{ fontSize: 11, color: pwSucceeded ? theme.colors.success : theme.colors.danger }}>{pwStatus}</Text>
+            )}
+            <Pressable
+              onPress={handlePasswordUpdate}
+              disabled={pwLoading || !currentPw || !newPw || newPw !== confirmPw}
+              style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8, opacity: pwLoading || !currentPw || !newPw || newPw !== confirmPw ? 0.4 : 1 }]}
+            >
+              {pwLoading ? <ActivityIndicator size="small" color={theme.colors.textPrimary} /> : <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} />}
+              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary }}>{t('profile.updatePassword')}</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={{ fontSize: 11, color: theme.colors.textTertiary }}>{t('profile.enterVerificationCode', { email })}</Text>
+            <TextInput
+              placeholder={t('profile.verificationCodePlaceholder')}
+              placeholderTextColor={theme.colors.textTertiary}
+              value={pwCode}
+              onChangeText={setPwCode}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus
+              style={[styles.input, { backgroundColor: theme.colors.backgroundElevated, color: theme.colors.textPrimary, borderRadius: theme.style.cardRadius - 8, letterSpacing: 4, textAlign: 'center' }]}
+            />
+            {pwStatus && (
+              <Text style={{ fontSize: 11, color: pwSucceeded ? theme.colors.success : theme.colors.danger }}>{pwStatus}</Text>
+            )}
+            <Pressable
+              onPress={handleConfirmPasswordCode}
+              disabled={pwLoading || !pwCode.trim()}
+              style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8, opacity: pwLoading || !pwCode.trim() ? 0.4 : 1 }]}
+            >
+              {pwLoading ? <ActivityIndicator size="small" color={theme.colors.textPrimary} /> : <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} />}
+              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary }}>{t('profile.confirmCode')}</Text>
+            </Pressable>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Pressable onPress={handleCancelPasswordCode} disabled={pwLoading}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.textTertiary }}>{t('common.cancel')}</Text>
+              </Pressable>
+              <Pressable onPress={handleResendPasswordCode} disabled={pwLoading}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.accent }}>{t('profile.resendCode')}</Text>
+              </Pressable>
+            </View>
+          </>
         )}
-        <Pressable
-          onPress={handlePasswordUpdate}
-          disabled={pwLoading || !currentPw || !newPw || newPw !== confirmPw}
-          style={[styles.secondaryButton, { backgroundColor: theme.colors.backgroundElevated, borderRadius: theme.style.cardRadius - 8, opacity: pwLoading || !currentPw || !newPw || newPw !== confirmPw ? 0.4 : 1 }]}
-        >
-          {pwLoading ? <ActivityIndicator size="small" color={theme.colors.textPrimary} /> : <Ionicons name="checkmark" size={14} color={theme.colors.textPrimary} />}
-          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary }}>{t('profile.updatePassword')}</Text>
-        </Pressable>
       </Card>
 
       <Card>
@@ -319,4 +519,6 @@ const styles = StyleSheet.create({
   input: { paddingHorizontal: 14, paddingVertical: 12, fontSize: 14 },
   secondaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11 },
   signOutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 6 },
+  addOnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 10, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12 },
+  addOnIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 })
