@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FLOW - Legal</title>
+<style>
+  :root {
+    --bg: #FAF7F2;
+    --card: #FFFFFF;
+    --border: #EDE6D8;
+    --text: #241C33;
+    --text-secondary: #55506A;
+    --accent: #8B6BFC;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0E0B14;
+      --card: #1B1526;
+      --border: #2A2338;
+      --text: #F7F4EF;
+      --text-secondary: #B8B2C9;
+      --accent: #FF9A3E;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 420px; width: 100%; padding: 24px; text-align: center; }
+  .brand { font-weight: 800; font-size: 22px; letter-spacing: 0.02em; color: var(--accent); margin-bottom: 8px; }
+  p.sub { color: var(--text-secondary); font-size: 14px; margin: 0 0 32px; }
+  .links { display: flex; flex-direction: column; gap: 12px; }
+  a.card {
+    display: block;
+    padding: 16px 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  a.card:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">FLOW</div>
+  <p class="sub">Legal documents</p>
+  <div class="links">
+    <a class="card" href="privacy-policy.html">Privacy Policy</a>
+    <a class="card" href="terms-of-service.html">Terms of Service</a>
+  </div>
+</div>
+</body>
+</html>
