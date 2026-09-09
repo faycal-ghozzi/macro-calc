@@ -1,4 +1,4 @@
-package com.macrotracknative
+package com.flowmacrotracker
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

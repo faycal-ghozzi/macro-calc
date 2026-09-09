@@ -1,4 +1,4 @@
-package com.macrotracknative
+package com.flowmacrotracker
 
 import android.app.Application
 import com.facebook.react.PackageList
